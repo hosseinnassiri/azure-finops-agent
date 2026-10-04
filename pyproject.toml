@@ -1,0 +1,18 @@
+[project]
+name = "roastbot"
+version = "0.2.0"
+description = "Rude, sarcastic Azure FinOps agent: finds cloud waste and roasts whoever owns it"
+requires-python = ">=3.11"
+dependencies = [
+    "claude-agent-sdk>=0.1",
+    "azure-identity>=1.17",
+    "azure-mgmt-resourcegraph>=8.0",
+    "requests>=2.31",
+]
+
+[project.scripts]
+roastbot = "roastbot.cli:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
