@@ -27,9 +27,15 @@ dev = [
 line-length = 120
 target-version = "py311"
 
+[tool.ruff.format]
+indent-style = "tab"
+
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "UP", "B"]
-ignore = ["E501"]  # long prompt and HTML strings are intentional
+ignore = [
+    "E501",  # long prompt and HTML strings are intentional
+    "W191",  # we indent with tabs (ruff's formatter enforces it)
+]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

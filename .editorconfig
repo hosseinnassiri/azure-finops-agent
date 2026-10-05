@@ -10,3 +10,10 @@ indent_size = 4
 
 [*.{json,yml,yaml,toml,md}]
 indent_size = 2
+
+[*.py]
+indent_style = tab
+
+# The YAML spec forbids tabs for indentation (GitHub Actions would fail to parse the workflow).
+[*.{yml,yaml}]
+indent_style = space

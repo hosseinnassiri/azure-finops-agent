@@ -14,41 +14,41 @@ from html import escape
 from pathlib import Path
 
 FALLBACK_ROASTS = {
-    "unattached_disk": "A disk attached to NOTHING, billed like it's holding up the whole company. Who signed off on this shit?",
-    "orphaned_public_ip": "A public IP pointing at absolutely fuck all. World-class reachability, zero purpose. Just like this team's roadmap.",
-    "stopped_not_deallocated_vm": "You 'stopped' it. Azure didn't. Azure is still billing you for the hardware, genius. Read the docs, maybe.",
-    "running_vm_unverified": "Running 24/7. Doing what? Nobody knows, nobody checked, nobody cares. The meter cares.",
-    "idle_vm": "Sitting at a few percent CPU while you pay for all of it. The most expensive screensaver in the building.",
-    "empty_app_service_plan": "A premium App Service plan hosting ZERO apps. You're paying penthouse rent for an empty room. Incredible.",
-    "orphaned_nic": "A NIC whose VM died ages ago. It's free, it's useless, and it's squatting on an IP like a ghost that won't leave.",
-    "old_snapshot": "A snapshot so old nobody remembers what disaster it was 'just in case' for. Digital hoarding at its finest.",
+	"unattached_disk": "A disk attached to NOTHING, billed like it's holding up the whole company. Who signed off on this shit?",
+	"orphaned_public_ip": "A public IP pointing at absolutely fuck all. World-class reachability, zero purpose. Just like this team's roadmap.",
+	"stopped_not_deallocated_vm": "You 'stopped' it. Azure didn't. Azure is still billing you for the hardware, genius. Read the docs, maybe.",
+	"running_vm_unverified": "Running 24/7. Doing what? Nobody knows, nobody checked, nobody cares. The meter cares.",
+	"idle_vm": "Sitting at a few percent CPU while you pay for all of it. The most expensive screensaver in the building.",
+	"empty_app_service_plan": "A premium App Service plan hosting ZERO apps. You're paying penthouse rent for an empty room. Incredible.",
+	"orphaned_nic": "A NIC whose VM died ages ago. It's free, it's useless, and it's squatting on an IP like a ghost that won't leave.",
+	"old_snapshot": "A snapshot so old nobody remembers what disaster it was 'just in case' for. Digital hoarding at its finest.",
 }
 
 
 def money(value) -> str:
-    return "n/a" if value is None else f"${value:,.2f}"
+	return "n/a" if value is None else f"${value:,.2f}"
 
 
 def savings_leaderboard(history_dir: Path) -> dict[str, float]:
-    """Credit owners for findings that disappeared between consecutive scans of the same scope."""
-    snapshots = [json.loads(p.read_text(encoding="utf-8")) for p in sorted(history_dir.glob("*.json"))]
-    saved: dict[str, float] = defaultdict(float)
-    for before, after in zip(snapshots, snapshots[1:], strict=False):
-        if before["scope"] != after["scope"]:
-            continue
-        remaining = {f["id"] for f in after["findings"]}
-        for f in before["findings"]:
-            if f["id"] not in remaining:
-                saved[f["owner"]] += f["monthly_cost_usd"] or 0
-    return dict(sorted(saved.items(), key=lambda kv: kv[1], reverse=True))
+	"""Credit owners for findings that disappeared between consecutive scans of the same scope."""
+	snapshots = [json.loads(p.read_text(encoding="utf-8")) for p in sorted(history_dir.glob("*.json"))]
+	saved: dict[str, float] = defaultdict(float)
+	for before, after in zip(snapshots, snapshots[1:], strict=False):
+		if before["scope"] != after["scope"]:
+			continue
+		remaining = {f["id"] for f in after["findings"]}
+		for f in before["findings"]:
+			if f["id"] not in remaining:
+				saved[f["owner"]] += f["monthly_cost_usd"] or 0
+	return dict(sorted(saved.items(), key=lambda kv: kv[1], reverse=True))
 
 
 def shame_leaderboard(findings: list[dict]) -> list[tuple[str, float, int]]:
-    totals: dict[str, list] = defaultdict(lambda: [0.0, 0])
-    for f in findings:
-        totals[f["owner"]][0] += f["monthly_cost_usd"] or 0
-        totals[f["owner"]][1] += 1
-    return sorted(((o, round(c, 2), n) for o, (c, n) in totals.items()), key=lambda t: t[1], reverse=True)
+	totals: dict[str, list] = defaultdict(lambda: [0.0, 0])
+	for f in findings:
+		totals[f["owner"]][0] += f["monthly_cost_usd"] or 0
+		totals[f["owner"]][1] += 1
+	return sorted(((o, round(c, 2), n) for o, (c, n) in totals.items()), key=lambda t: t[1], reverse=True)
 
 
 EMAIL = re.compile(r"[\w.+-]+@[\w-]+(\.[\w-]+)+")
@@ -57,136 +57,136 @@ MAX_EVIDENCE = 5
 
 
 def tidy_evidence(evidence: dict) -> dict:
-    """Drop fields the card already shows, mask email addresses (this goes on a big screen), cap the list."""
-    tidy = {}
-    for key, value in evidence.items():
-        if key.lower() in SHOWN_ELSEWHERE or len(tidy) >= MAX_EVIDENCE:
-            continue
-        tidy[key] = EMAIL.sub("[redacted]", str(value))
-    return tidy
+	"""Drop fields the card already shows, mask email addresses (this goes on a big screen), cap the list."""
+	tidy = {}
+	for key, value in evidence.items():
+		if key.lower() in SHOWN_ELSEWHERE or len(tidy) >= MAX_EVIDENCE:
+			continue
+		tidy[key] = EMAIL.sub("[redacted]", str(value))
+	return tidy
 
 
 def confirmed(scan: dict, roasts: dict) -> list[dict]:
-    """Findings the agent didn't dismiss, with its extra evidence and verdict applied."""
-    verdicts = roasts.get("findings", {})
-    result = []
-    for f in scan["findings"]:
-        verdict = verdicts.get(f["id"], {})
-        if verdict.get("dismiss"):
-            continue
-        f = {**f, "evidence": tidy_evidence({**f["evidence"], **verdict.get("evidence", {})})}
-        if verdict.get("title"):
-            f["title"] = verdict["title"]
-        if f["detector"] == "running_vm_unverified" and verdict:
-            f["detector"] = "idle_vm"
-        result.append(f)
-    return result
+	"""Findings the agent didn't dismiss, with its extra evidence and verdict applied."""
+	verdicts = roasts.get("findings", {})
+	result = []
+	for f in scan["findings"]:
+		verdict = verdicts.get(f["id"], {})
+		if verdict.get("dismiss"):
+			continue
+		f = {**f, "evidence": tidy_evidence({**f["evidence"], **verdict.get("evidence", {})})}
+		if verdict.get("title"):
+			f["title"] = verdict["title"]
+		if f["detector"] == "running_vm_unverified" and verdict:
+			f["detector"] = "idle_vm"
+		result.append(f)
+	return result
 
 
 FIRE_INDEX = [  # (monthly $ below which, flames, label)
-    (0.01, 0, "Suspiciously clean"),
-    (25, 1, "Mildly smelly"),
-    (100, 2, "Grease fire"),
-    (500, 3, "Dumpster fire"),
-    (2000, 4, "Tire fire"),
-    (float("inf"), 5, "Call the fire department"),
+	(0.01, 0, "Suspiciously clean"),
+	(25, 1, "Mildly smelly"),
+	(100, 2, "Grease fire"),
+	(500, 3, "Dumpster fire"),
+	(2000, 4, "Tire fire"),
+	(float("inf"), 5, "Call the fire department"),
 ]
 EPITHETS = [
-    "Certified Budget Arsonist",
-    "Click-Ops Dumbass",
-    "Tag-Allergic Jackass",
-    "Delete-Button Chickenshit",
-    "Professional Cloud Hoarder",
-    "Half-Assed Architect",
-    "Invoice-Ignoring Asshat",
-    "Chief Shitshow Officer",
-    "Serial Resource Abandoner",
-    "Azure's Favourite Dumbass",
-    "FinOps Felon",
-    "Human Cost Overrun",
-    "Distinguished Engineer of Fuck-All",
-    "Free-Trial Brain, Enterprise Bill",
-    "Terraform Tourist",
-    "Microsoft's Shareholder of the Goddamn Month",
-    "Ghost Infrastructure Landlord",
-    "Portal-Clicking Clown",
+	"Certified Budget Arsonist",
+	"Click-Ops Dumbass",
+	"Tag-Allergic Jackass",
+	"Delete-Button Chickenshit",
+	"Professional Cloud Hoarder",
+	"Half-Assed Architect",
+	"Invoice-Ignoring Asshat",
+	"Chief Shitshow Officer",
+	"Serial Resource Abandoner",
+	"Azure's Favourite Dumbass",
+	"FinOps Felon",
+	"Human Cost Overrun",
+	"Distinguished Engineer of Fuck-All",
+	"Free-Trial Brain, Enterprise Bill",
+	"Terraform Tourist",
+	"Microsoft's Shareholder of the Goddamn Month",
+	"Ghost Infrastructure Landlord",
+	"Portal-Clicking Clown",
 ]
 INSULTS = [
-    "Your cloud bill has more red flags than a goddamn Soviet parade.",
-    "Somewhere a CFO just felt a disturbance in the force and said 'what the fuck'.",
-    "Microsoft thanks you for your generous fucking donation.",
-    "This estate isn't architected. It's abandoned, like a shitty Airbnb.",
-    "Tagging is free. You still couldn't be bothered, you lazy asshats.",
-    "'Temporary' is the most expensive goddamn word in your vocabulary.",
-    "Your resources have been running longer than your attention span. Which, granted, isn't hard.",
-    "The delete button won't bite, you absolute chickenshits.",
-    "Infrastructure as Code? More like Infrastructure as Horseshit.",
-    "If pissing money away were a KPI, you'd all be getting promoted.",
-    "Your subscription is a museum of dumbass decisions, and admission costs $0.005 an hour.",
-    "Cost optimization called. It wants to know what the fuck you're doing.",
-    "Every orphaned resource here is some jackass's 'I'll clean it up on Friday'.",
-    "Even Azure Advisor gave up on you and started recommending therapy.",
+	"Your cloud bill has more red flags than a goddamn Soviet parade.",
+	"Somewhere a CFO just felt a disturbance in the force and said 'what the fuck'.",
+	"Microsoft thanks you for your generous fucking donation.",
+	"This estate isn't architected. It's abandoned, like a shitty Airbnb.",
+	"Tagging is free. You still couldn't be bothered, you lazy asshats.",
+	"'Temporary' is the most expensive goddamn word in your vocabulary.",
+	"Your resources have been running longer than your attention span. Which, granted, isn't hard.",
+	"The delete button won't bite, you absolute chickenshits.",
+	"Infrastructure as Code? More like Infrastructure as Horseshit.",
+	"If pissing money away were a KPI, you'd all be getting promoted.",
+	"Your subscription is a museum of dumbass decisions, and admission costs $0.005 an hour.",
+	"Cost optimization called. It wants to know what the fuck you're doing.",
+	"Every orphaned resource here is some jackass's 'I'll clean it up on Friday'.",
+	"Even Azure Advisor gave up on you and started recommending therapy.",
 ]
 STAMPS = [
-    (100, "Dumpster fire", "hot"),
-    (25, "Certified garbage", "warm"),
-    (1, "Petty larceny", "mild"),
-    (0, "Digital litter", "mild"),
+	(100, "Dumpster fire", "hot"),
+	(25, "Certified garbage", "warm"),
+	(1, "Petty larceny", "mild"),
+	(0, "Digital litter", "mild"),
 ]
 
 
 def plural(n: int, word: str) -> str:
-    return f"{n} {word}{'s' if n != 1 else ''}"
+	return f"{n} {word}{'s' if n != 1 else ''}"
 
 
 def fire_index(total: float) -> tuple[int, str]:
-    return next((flames, label) for limit, flames, label in FIRE_INDEX if total < limit)
+	return next((flames, label) for limit, flames, label in FIRE_INDEX if total < limit)
 
 
 def stamp_for(cost: float | None) -> tuple[str, str]:
-    return next((label, tone) for floor, label, tone in STAMPS if (cost or 0) >= floor)
+	return next((label, tone) for floor, label, tone in STAMPS if (cost or 0) >= floor)
 
 
 def exhibit(n: int) -> str:
-    letters = ""
-    n += 1
-    while n:
-        n, r = divmod(n - 1, 26)
-        letters = chr(65 + r) + letters
-    return letters
+	letters = ""
+	n += 1
+	while n:
+		n, r = divmod(n - 1, 26)
+		letters = chr(65 + r) + letters
+	return letters
 
 
 def board(rows: list[tuple[str, float, str]], tone: str, empty: str) -> str:
-    if not rows:
-        return f'<p class="empty">{empty}</p>'
-    top = max(r[1] for r in rows) or 1
-    items = []
-    for rank, (name, value, note) in enumerate(rows, 1):
-        crown = "🤡" if rank == 1 else f"#{rank}"
-        items.append(
-            f'<li><span class="rank">{crown}</span><div class="who"><b>{escape(name)}</b>'
-            f'<small>{escape(note)}</small></div><span class="amt">{money(value)}<em>/mo</em></span>'
-            f'<span class="bar {tone}"><i style="width:{max(value / top * 100, 3):.1f}%"></i></span></li>'
-        )
-    return f'<ol class="board">{"".join(items)}</ol>'
+	if not rows:
+		return f'<p class="empty">{empty}</p>'
+	top = max(r[1] for r in rows) or 1
+	items = []
+	for rank, (name, value, note) in enumerate(rows, 1):
+		crown = "🤡" if rank == 1 else f"#{rank}"
+		items.append(
+			f'<li><span class="rank">{crown}</span><div class="who"><b>{escape(name)}</b>'
+			f'<small>{escape(note)}</small></div><span class="amt">{money(value)}<em>/mo</em></span>'
+			f'<span class="bar {tone}"><i style="width:{max(value / top * 100, 3):.1f}%"></i></span></li>'
+		)
+	return f'<ol class="board">{"".join(items)}</ol>'
 
 
 def pick(options: list[str], key: str) -> str:
-    """Stable choice per key, so a finding keeps its insult across re-renders."""
-    return options[int(hashlib.sha1(key.encode()).hexdigest(), 16) % len(options)]
+	"""Stable choice per key, so a finding keeps its insult across re-renders."""
+	return options[int(hashlib.sha1(key.encode()).hexdigest(), 16) % len(options)]
 
 
 def finding_card(n: int, f: dict, roast: dict) -> str:
-    cost = f["monthly_cost_usd"]
-    epithet = roast.get("epithet") or pick(EPITHETS, f["id"])
-    label, tone = stamp_for(cost)
-    evidence = "".join(
-        f"<li><span>{escape(str(k).replace('_', ' '))}</span><b>{escape(str(v))}</b></li>"
-        for k, v in f["evidence"].items()
-    )
-    fix_note = roast.get("fix_note") or f["fix_summary"]
-    yearly = money(cost * 12) if cost is not None else "n/a"
-    return f"""
+	cost = f["monthly_cost_usd"]
+	epithet = roast.get("epithet") or pick(EPITHETS, f["id"])
+	label, tone = stamp_for(cost)
+	evidence = "".join(
+		f"<li><span>{escape(str(k).replace('_', ' '))}</span><b>{escape(str(v))}</b></li>"
+		for k, v in f["evidence"].items()
+	)
+	fix_note = roast.get("fix_note") or f["fix_summary"]
+	yearly = money(cost * 12) if cost is not None else "n/a"
+	return f"""
     <article class="card">
       <div class="stamp {tone}">{escape(label)}</div>
       <header><span class="exhibit">Exhibit {exhibit(n)}</span><span class="kind">{escape(f["title"])}</span></header>
@@ -315,46 +315,46 @@ footer { margin-top:36px; padding-top:14px; border-top:3px double var(--ink); co
 """
 
 FONTS = (
-    '<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>'
-    '<link href="https://fonts.googleapis.com/css2?family=Anton&family=Inter:wght@400;500;600;800'
-    '&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">'
+	'<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>'
+	'<link href="https://fonts.googleapis.com/css2?family=Anton&family=Inter:wght@400;500;600;800'
+	'&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">'
 )
 
 
 def render(scan: dict, findings: list[dict], roasts: dict, saved: dict[str, float]) -> str:
-    per_finding = roasts.get("findings", {})
-    owner_lines = roasts.get("owners", {})
-    total = round(sum(f["monthly_cost_usd"] or 0 for f in findings), 2)
-    headline = (
-        roasts.get("headline")
-        or f"{len(findings)} pieces of cloud waste found. Nobody is surprised. Everybody should be ashamed."
-    )
-    flames, severity = fire_index(total)
-    shame_rows = shame_leaderboard(findings)
-    owners = len(shame_rows)
+	per_finding = roasts.get("findings", {})
+	owner_lines = roasts.get("owners", {})
+	total = round(sum(f["monthly_cost_usd"] or 0 for f in findings), 2)
+	headline = (
+		roasts.get("headline")
+		or f"{len(findings)} pieces of cloud waste found. Nobody is surprised. Everybody should be ashamed."
+	)
+	flames, severity = fire_index(total)
+	shame_rows = shame_leaderboard(findings)
+	owners = len(shame_rows)
 
-    shame = [
-        (o, c, plural(n, "offence") + (f" · {owner_lines[o]}" if o in owner_lines else "")) for o, c, n in shame_rows
-    ]
-    heroes = [(o, c, "saved. Finally. Took you long enough.") for o, c in saved.items()]
-    cards = "".join(finding_card(i, f, per_finding.get(f["id"], {})) for i, f in enumerate(findings))
-    errors = "".join(f"<li>{escape(e['detector'])}: {escape(e['error'])}</li>" for e in scan.get("errors", []))
-    bonus = roasts.get("insults", [])
-    jabs = [f"<span><b>{escape(o)}</b> {escape(line)}</span>" for o, line in owner_lines.items()]
-    canned = [f"<span>{escape(i)}</span>" for i in (bonus or INSULTS)]
-    mixed = [item for pair in zip(canned, jabs + canned, strict=False) for item in pair] if jabs else canned
-    ticker = f'<div class="ticker"><div class="track">{"".join(mixed * 2)}</div></div>'
-    hate_mail = "".join(
-        f"<li>{escape(i)}</li>" for i in (bonus or [pick(INSULTS, scan["scanned_at"] + str(k)) for k in range(4)])
-    )
-    scanned = scan["scanned_at"].replace("T", " ").split("+")[0]
-    flame_icons = "".join(f'<i class="{"on" if i < flames else ""}">🔥</i>' for i in range(5))
-    clean = (
-        '<div class="clean">No waste found. Either you are a FinOps saint or the scan is lying. '
-        "Statistically, the scan is lying.</div>"
-    )
+	shame = [
+		(o, c, plural(n, "offence") + (f" · {owner_lines[o]}" if o in owner_lines else "")) for o, c, n in shame_rows
+	]
+	heroes = [(o, c, "saved. Finally. Took you long enough.") for o, c in saved.items()]
+	cards = "".join(finding_card(i, f, per_finding.get(f["id"], {})) for i, f in enumerate(findings))
+	errors = "".join(f"<li>{escape(e['detector'])}: {escape(e['error'])}</li>" for e in scan.get("errors", []))
+	bonus = roasts.get("insults", [])
+	jabs = [f"<span><b>{escape(o)}</b> {escape(line)}</span>" for o, line in owner_lines.items()]
+	canned = [f"<span>{escape(i)}</span>" for i in (bonus or INSULTS)]
+	mixed = [item for pair in zip(canned, jabs + canned, strict=False) for item in pair] if jabs else canned
+	ticker = f'<div class="ticker"><div class="track">{"".join(mixed * 2)}</div></div>'
+	hate_mail = "".join(
+		f"<li>{escape(i)}</li>" for i in (bonus or [pick(INSULTS, scan["scanned_at"] + str(k)) for k in range(4)])
+	)
+	scanned = scan["scanned_at"].replace("T", " ").split("+")[0]
+	flame_icons = "".join(f'<i class="{"on" if i < flames else ""}">🔥</i>' for i in range(5))
+	clean = (
+		'<div class="clean">No waste found. Either you are a FinOps saint or the scan is lying. '
+		"Statistically, the scan is lying.</div>"
+	)
 
-    return f"""<!doctype html>
+	return f"""<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>The Daily Burn</title>
 {FONTS}
@@ -398,21 +398,21 @@ def render(scan: dict, findings: list[dict], roasts: dict, saved: dict[str, floa
 
 
 def finalize(out: Path, open_browser: bool = False) -> Path:
-    """Apply the agent's verdicts, record a history snapshot for the leaderboard, and render the report."""
-    scan = json.loads((out / "findings.json").read_text(encoding="utf-8"))
-    roasts_file = out / "roasts.json"
-    # Verdicts are keyed by stable finding id, so they carry over to rescans (e.g. after someone fixes something).
-    roasts = json.loads(roasts_file.read_text(encoding="utf-8")) if roasts_file.exists() else {}
-    findings = confirmed(scan, roasts)
+	"""Apply the agent's verdicts, record a history snapshot for the leaderboard, and render the report."""
+	scan = json.loads((out / "findings.json").read_text(encoding="utf-8"))
+	roasts_file = out / "roasts.json"
+	# Verdicts are keyed by stable finding id, so they carry over to rescans (e.g. after someone fixes something).
+	roasts = json.loads(roasts_file.read_text(encoding="utf-8")) if roasts_file.exists() else {}
+	findings = confirmed(scan, roasts)
 
-    history = out / "history"
-    history.mkdir(parents=True, exist_ok=True)
-    stamp = scan["scanned_at"].replace(":", "").replace("-", "").replace("+0000", "Z")
-    snapshot = {"scanned_at": scan["scanned_at"], "scope": scan["scope"], "findings": findings}
-    (history / f"{stamp}.json").write_text(json.dumps(snapshot, indent=2), encoding="utf-8")
+	history = out / "history"
+	history.mkdir(parents=True, exist_ok=True)
+	stamp = scan["scanned_at"].replace(":", "").replace("-", "").replace("+0000", "Z")
+	snapshot = {"scanned_at": scan["scanned_at"], "scope": scan["scope"], "findings": findings}
+	(history / f"{stamp}.json").write_text(json.dumps(snapshot, indent=2), encoding="utf-8")
 
-    report = out / "report.html"
-    report.write_text(render(scan, findings, roasts, savings_leaderboard(history)), encoding="utf-8")
-    if open_browser:
-        webbrowser.open(report.resolve().as_uri())
-    return report.resolve()
+	report = out / "report.html"
+	report.write_text(render(scan, findings, roasts, savings_leaderboard(history)), encoding="utf-8")
+	if open_browser:
+		webbrowser.open(report.resolve().as_uri())
+	return report.resolve()

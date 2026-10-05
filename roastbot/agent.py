@@ -15,14 +15,14 @@ from pathlib import Path
 from typing import Any
 
 from claude_agent_sdk import (
-    AssistantMessage,
-    ClaudeAgentOptions,
-    ResultMessage,
-    TextBlock,
-    ToolUseBlock,
-    create_sdk_mcp_server,
-    query,
-    tool,
+	AssistantMessage,
+	ClaudeAgentOptions,
+	ResultMessage,
+	TextBlock,
+	ToolUseBlock,
+	create_sdk_mcp_server,
+	query,
+	tool,
 )
 
 from . import report, scan
@@ -110,79 +110,79 @@ Run a full roast of the Azure estate. Current UTC time: {now}.{demo_note}
 
 
 def azure_mcp(args: list[str]) -> dict:
-    return {
-        "type": "stdio",
-        "command": "uvx",
-        "args": ["--from", AZMCP_VERSION, "azmcp", "server", "start", *args],
-    }
+	return {
+		"type": "stdio",
+		"command": "uvx",
+		"args": ["--from", AZMCP_VERSION, "azmcp", "server", "start", *args],
+	}
 
 
 def text_result(payload: Any) -> dict:
-    text = payload if isinstance(payload, str) else json.dumps(payload, indent=1)
-    return {"content": [{"type": "text", "text": text}]}
+	text = payload if isinstance(payload, str) else json.dumps(payload, indent=1)
+	return {"content": [{"type": "text", "text": text}]}
 
 
 def roastbot_tools(out: Path, subscriptions: list[str] | None, settings: dict):
-    @tool("scan_for_waste", "Sweep Azure Resource Graph for waste candidates. Takes no arguments.", {})
-    async def scan_for_waste(args: dict[str, Any]) -> dict:
-        result = await asyncio.to_thread(scan.run_scan, subscriptions, settings, out)
-        return text_result(result)
+	@tool("scan_for_waste", "Sweep Azure Resource Graph for waste candidates. Takes no arguments.", {})
+	async def scan_for_waste(args: dict[str, Any]) -> dict:
+		result = await asyncio.to_thread(scan.run_scan, subscriptions, settings, out)
+		return text_result(result)
 
-    @tool(
-        "save_roasts",
-        "Save verdicts and roasts for every finding. roasts_json is the JSON object described in the task.",
-        {"roasts_json": str},
-    )
-    async def save_roasts(args: dict[str, Any]) -> dict:
-        try:
-            roasts = json.loads(args["roasts_json"])
-        except json.JSONDecodeError as exc:
-            return {**text_result(f"Invalid JSON: {exc}. Fix it and call again."), "is_error": True}
-        known = {f["id"] for f in json.loads((out / "findings.json").read_text(encoding="utf-8"))["findings"]}
-        missing = known - set(roasts.get("findings", {}))
-        (out / "roasts.json").write_text(json.dumps(roasts, indent=2, ensure_ascii=False), encoding="utf-8")
-        return text_result(f"Saved. Findings without a verdict: {sorted(missing) or 'none'}")
+	@tool(
+		"save_roasts",
+		"Save verdicts and roasts for every finding. roasts_json is the JSON object described in the task.",
+		{"roasts_json": str},
+	)
+	async def save_roasts(args: dict[str, Any]) -> dict:
+		try:
+			roasts = json.loads(args["roasts_json"])
+		except json.JSONDecodeError as exc:
+			return {**text_result(f"Invalid JSON: {exc}. Fix it and call again."), "is_error": True}
+		known = {f["id"] for f in json.loads((out / "findings.json").read_text(encoding="utf-8"))["findings"]}
+		missing = known - set(roasts.get("findings", {}))
+		(out / "roasts.json").write_text(json.dumps(roasts, indent=2, ensure_ascii=False), encoding="utf-8")
+		return text_result(f"Saved. Findings without a verdict: {sorted(missing) or 'none'}")
 
-    @tool("render_report", "Render the HTML report from the saved scan and roasts. Takes no arguments.", {})
-    async def render_report(args: dict[str, Any]) -> dict:
-        path = await asyncio.to_thread(report.finalize, out)
-        return text_result(f"Report written to {path}")
+	@tool("render_report", "Render the HTML report from the saved scan and roasts. Takes no arguments.", {})
+	async def render_report(args: dict[str, Any]) -> dict:
+		path = await asyncio.to_thread(report.finalize, out)
+		return text_result(f"Report written to {path}")
 
-    return create_sdk_mcp_server(name="roastbot", version="0.2.0", tools=[scan_for_waste, save_roasts, render_report])
+	return create_sdk_mcp_server(name="roastbot", version="0.2.0", tools=[scan_for_waste, save_roasts, render_report])
 
 
 async def stream(prompt: str, options: ClaudeAgentOptions) -> None:
-    async for message in query(prompt=prompt, options=options):
-        if isinstance(message, AssistantMessage):
-            for block in message.content:
-                if isinstance(block, TextBlock) and block.text.strip():
-                    print(block.text)
-                elif isinstance(block, ToolUseBlock):
-                    print(f"  🔧 {block.name.removeprefix('mcp__')}")
-        elif isinstance(message, ResultMessage) and message.subtype != "success":
-            print(f"\n[agent stopped: {message.subtype}]")
+	async for message in query(prompt=prompt, options=options):
+		if isinstance(message, AssistantMessage):
+			for block in message.content:
+				if isinstance(block, TextBlock) and block.text.strip():
+					print(block.text)
+				elif isinstance(block, ToolUseBlock):
+					print(f"  🔧 {block.name.removeprefix('mcp__')}")
+		elif isinstance(message, ResultMessage) and message.subtype != "success":
+			print(f"\n[agent stopped: {message.subtype}]")
 
 
 async def roast(out: Path, subscriptions: list[str] | None, demo: bool, model: str | None) -> None:
-    settings = scan.settings_for(demo)
-    namespaces = [arg for n in READ_NAMESPACES for arg in ("--namespace", n)]
-    options = ClaudeAgentOptions(
-        system_prompt=PERSONA,
-        model=model,
-        mcp_servers={
-            "azure": azure_mcp(["--read-only", "--mode", "all", *namespaces]),
-            "roastbot": roastbot_tools(out, subscriptions, settings),
-        },
-        tools=[],  # no built-in Bash/Read/Write/Edit: only the MCP tools above
-        allowed_tools=["mcp__azure", "mcp__roastbot"],
-        permission_mode="dontAsk",  # anything not allowed above is denied, never prompted
-        setting_sources=[],  # ignore user/project Claude Code settings
-        max_turns=60,
-    )
-    task = ROAST_TASK.format(
-        now=dt.datetime.now(dt.UTC).isoformat(timespec="minutes"),
-        demo_note=" Demo mode: lookback and snapshot-age thresholds are deliberately short." if demo else "",
-        lookback=settings["idle_lookback_hours"],
-        cpu=settings["idle_cpu_pct"],
-    )
-    await stream(task, options)
+	settings = scan.settings_for(demo)
+	namespaces = [arg for n in READ_NAMESPACES for arg in ("--namespace", n)]
+	options = ClaudeAgentOptions(
+		system_prompt=PERSONA,
+		model=model,
+		mcp_servers={
+			"azure": azure_mcp(["--read-only", "--mode", "all", *namespaces]),
+			"roastbot": roastbot_tools(out, subscriptions, settings),
+		},
+		tools=[],  # no built-in Bash/Read/Write/Edit: only the MCP tools above
+		allowed_tools=["mcp__azure", "mcp__roastbot"],
+		permission_mode="dontAsk",  # anything not allowed above is denied, never prompted
+		setting_sources=[],  # ignore user/project Claude Code settings
+		max_turns=60,
+	)
+	task = ROAST_TASK.format(
+		now=dt.datetime.now(dt.UTC).isoformat(timespec="minutes"),
+		demo_note=" Demo mode: lookback and snapshot-age thresholds are deliberately short." if demo else "",
+		lookback=settings["idle_lookback_hours"],
+		cpu=settings["idle_cpu_pct"],
+	)
+	await stream(task, options)
