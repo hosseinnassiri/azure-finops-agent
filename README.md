@@ -35,6 +35,9 @@ az login           # Azure: used by both the sweep and Azure MCP
 claude             # once, if Claude Code isn't logged in yet. The agent reuses that login.
 ```
 
+No Claude login? See [Running on Microsoft Foundry](#running-on-microsoft-foundry) or
+[Using a non-Claude model](#using-a-non-claude-model).
+
 ## Use
 
 | Command | What it does |
@@ -51,6 +54,37 @@ Add `--model <id>` before the subcommand to pick a Claude model (default: your C
 
 `--subscription` only sees subscriptions in your current `az` tenant. For one in another tenant, run
 `az account set --subscription <id>` first. An unknown or ambiguous name fails fast instead of roasting an empty estate.
+
+### Running on Microsoft Foundry
+
+There are two ways to run RoastBot on a model hosted in [Microsoft Foundry](https://ai.azure.com/):
+
+- **A Claude model** (the default `claude` provider) needs no code changes and no Claude Code login. The Agent SDK
+  ships its own Claude Code CLI, and you point it at Foundry with environment variables.
+- **A GPT, DeepSeek or other Foundry model** uses `--provider openai`. See [Using a non-Claude model](#using-a-non-claude-model).
+
+For Claude, you need:
+
+- A Foundry resource with a Claude deployment. Pick a fixed model version, not "auto-update".
+- The `Azure AI User` or `Cognitive Services User` role on the resource.
+
+Then run:
+
+```powershell
+$env:CLAUDE_CODE_USE_FOUNDRY = "1"
+$env:ANTHROPIC_FOUNDRY_RESOURCE = "<resource-name>"   # the name alone, not a URL
+az login                                             # Foundry auth falls back to DefaultAzureCredential
+uv run roastbot --model <deployment-name> roast --demo
+```
+
+- **API key instead of `az login`:** set `$env:ANTHROPIC_FOUNDRY_API_KEY` to the key from the resource's
+  **Endpoints and keys** page.
+- **Always pass `--model`:** without it, Claude Code picks its own default model, which may not be deployed on
+  your resource. Foundry doesn't check the model at startup, so the run fails on the first request instead.
+- **Set these in your shell:** RoastBot ignores Claude Code's `settings.json` (`setting_sources=[]`), so variables
+  set in its `env` block don't reach the agent.
+
+Details: [Claude Code on Microsoft Foundry](https://code.claude.com/docs/en/microsoft-foundry).
 
 ### Using a non-Claude model
 
