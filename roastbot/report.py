@@ -4,7 +4,9 @@ Works without roasts.json too: findings fall back to canned insults.
 """
 from __future__ import annotations
 
+import hashlib
 import json
+import re
 import webbrowser
 from collections import defaultdict
 from html import escape
@@ -48,14 +50,19 @@ def shame_leaderboard(findings: list[dict]) -> list[tuple[str, float, int]]:
     return sorted(((o, round(c, 2), n) for o, (c, n) in totals.items()), key=lambda t: t[1], reverse=True)
 
 
-def bar_rows(rows: list[tuple[str, float, str]], css_class: str) -> str:
-    top = max((r[1] for r in rows), default=0) or 1
-    return "".join(
-        f'<li><span class="who">{escape(name)}</span>'
-        f'<span class="bar {css_class}"><i style="width:{max(value / top * 100, 2):.1f}%"></i></span>'
-        f'<span class="amt">{money(value)}<small>{escape(note)}</small></span></li>'
-        for name, value, note in rows
-    ) or '<li class="empty">Nobody yet. Fix something and rescan.</li>'
+EMAIL = re.compile(r"[\w.+-]+@[\w-]+(\.[\w-]+)+")
+SHOWN_ELSEWHERE = {"sku", "monthly_cost_usd", "yearly_cost_usd", "monthly_cost", "yearly_cost", "cost"}
+MAX_EVIDENCE = 5
+
+
+def tidy_evidence(evidence: dict) -> dict:
+    """Drop fields the card already shows, mask email addresses (this goes on a big screen), cap the list."""
+    tidy = {}
+    for key, value in evidence.items():
+        if key.lower() in SHOWN_ELSEWHERE or len(tidy) >= MAX_EVIDENCE:
+            continue
+        tidy[key] = EMAIL.sub("[redacted]", str(value))
+    return tidy
 
 
 def confirmed(scan: dict, roasts: dict) -> list[dict]:
@@ -66,7 +73,7 @@ def confirmed(scan: dict, roasts: dict) -> list[dict]:
         verdict = verdicts.get(f["id"], {})
         if verdict.get("dismiss"):
             continue
-        f = {**f, "evidence": {**f["evidence"], **verdict.get("evidence", {})}}
+        f = {**f, "evidence": tidy_evidence({**f["evidence"], **verdict.get("evidence", {})})}
         if verdict.get("title"):
             f["title"] = verdict["title"]
         if f["detector"] == "running_vm_unverified" and verdict:
@@ -75,102 +82,279 @@ def confirmed(scan: dict, roasts: dict) -> list[dict]:
     return result
 
 
-def finding_card(f: dict, roast: dict) -> str:
-    evidence = " · ".join(f"{escape(str(k))}: {escape(str(v))}" for k, v in f["evidence"].items())
+FIRE_INDEX = [  # (monthly $ below which, flames, label)
+    (0.01, 0, "Suspiciously clean"), (25, 1, "Mildly smelly"), (100, 2, "Grease fire"),
+    (500, 3, "Dumpster fire"), (2000, 4, "Tire fire"), (float("inf"), 5, "Call the fire department"),
+]
+EPITHETS = [
+    "Certified Budget Arsonist", "Click-Ops Caveman", "Tag-Allergic Gremlin", "Delete-Button Coward",
+    "Professional Cloud Hoarder", "YAML Goblin", "Invoice Denier", "Chief Waste Officer",
+    "Serial Resource Abandoner", "Azure's Favourite Customer", "FinOps Felon", "Human Cost Overrun",
+    "Distinguished Engineer of Nothing", "Free-Trial Mindset, Enterprise Bill", "Terraform Tourist",
+    "Microsoft's Shareholder of the Month", "Ghost Infrastructure Landlord", "Portal Click Enthusiast",
+]
+INSULTS = [
+    "Your cloud bill has more red flags than a Soviet parade.",
+    "Somewhere a CFO just felt a disturbance in the force.",
+    "Microsoft thanks you for your generous donation.",
+    "This estate isn't architected. It's abandoned.",
+    "Tagging is free. You still couldn't be bothered.",
+    "'Temporary' is the most expensive word in your vocabulary.",
+    "Your resources have been running longer than your attention span.",
+    "The delete button won't bite. Promise.",
+    "Infrastructure as Code? More like Infrastructure as Clutter.",
+    "If waste were a KPI, you'd all be getting promoted.",
+    "Your subscription is a museum of bad decisions, and admission costs $0.005 an hour.",
+    "Cost optimization called. It wants to know if you're even trying.",
+    "Every orphaned resource here is somebody's 'I'll clean it up on Friday'.",
+    "Even Azure Advisor gave up on you and started recommending therapy.",
+]
+STAMPS = [(100, "Dumpster fire", "hot"), (25, "Certified garbage", "warm"), (1, "Petty larceny", "mild"), (0, "Digital litter", "mild")]
+
+
+def fire_index(total: float) -> tuple[int, str]:
+    return next((flames, label) for limit, flames, label in FIRE_INDEX if total < limit)
+
+
+def stamp_for(cost: float | None) -> tuple[str, str]:
+    return next((label, tone) for floor, label, tone in STAMPS if (cost or 0) >= floor)
+
+
+def exhibit(n: int) -> str:
+    letters = ""
+    n += 1
+    while n:
+        n, r = divmod(n - 1, 26)
+        letters = chr(65 + r) + letters
+    return letters
+
+
+def board(rows: list[tuple[str, float, str]], tone: str, empty: str) -> str:
+    if not rows:
+        return f'<p class="empty">{empty}</p>'
+    top = max(r[1] for r in rows) or 1
+    items = []
+    for rank, (name, value, note) in enumerate(rows, 1):
+        crown = "🤡" if rank == 1 else f"#{rank}"
+        items.append(
+            f'<li><span class="rank">{crown}</span><div class="who"><b>{escape(name)}</b>'
+            f'<small>{escape(note)}</small></div><span class="amt">{money(value)}<em>/mo</em></span>'
+            f'<span class="bar {tone}"><i style="width:{max(value / top * 100, 3):.1f}%"></i></span></li>'
+        )
+    return f'<ol class="board">{"".join(items)}</ol>'
+
+
+def pick(options: list[str], key: str) -> str:
+    """Stable choice per key, so a finding keeps its insult across re-renders."""
+    return options[int(hashlib.sha1(key.encode()).hexdigest(), 16) % len(options)]
+
+
+def finding_card(n: int, f: dict, roast: dict) -> str:
+    cost = f["monthly_cost_usd"]
+    epithet = roast.get("epithet") or pick(EPITHETS, f["id"])
+    label, tone = stamp_for(cost)
+    evidence = "".join(f"<li><span>{escape(str(k).replace('_', ' '))}</span><b>{escape(str(v))}</b></li>"
+                       for k, v in f["evidence"].items())
     fix_note = roast.get("fix_note") or f["fix_summary"]
+    yearly = money(cost * 12) if cost is not None else "n/a"
     return f"""
     <article class="card">
-      <header>
-        <span class="tag">{escape(f['detector'].replace('_', ' '))}</span>
-        <span class="cost">{money(f['monthly_cost_usd'])}<small>/mo</small></span>
-      </header>
-      <p class="roast">{escape(roast.get('roast') or FALLBACK_ROASTS.get(f['detector'], f['title']))}</p>
-      <dl>
-        <dt>Resource</dt><dd><b>{escape(f['resource_name'])}</b> in {escape(f['resource_group'])} ({escape(f['location'])})</dd>
-        <dt>Owner</dt><dd>{escape(f['owner'])}</dd>
-        <dt>SKU</dt><dd>{escape(f['sku'])}</dd>
-        <dt>Evidence</dt><dd>{evidence or '—'}</dd>
-        <dt>Cost basis</dt><dd>{escape(f['cost_basis'])}</dd>
-      </dl>
-      <div class="fix">
-        <p><b>Fix:</b> {escape(fix_note)}</p>
-        <pre><code>{escape(f['fix_command'])}</code></pre>
-        <p class="hint">Suggested only. RoastBot never touches your resources; a human runs this.</p>
+      <div class="stamp {tone}">{escape(label)}</div>
+      <header><span class="exhibit">Exhibit {exhibit(n)}</span><span class="kind">{escape(f['title'])}</span></header>
+      <h3>{escape(f['resource_name'])}</h3>
+      <p class="where">{escape(f['resource_group'])} · {escape(f['location'])} · owned by <b>{escape(f['owner'])}</b></p>
+      <blockquote>{escape(roast.get('roast') or FALLBACK_ROASTS.get(f['detector'], f['title']))}</blockquote>
+      <p class="verdict">Verdict: <b>{escape(f['owner'])}</b>, {escape(epithet)}</p>
+      <div class="receipt">
+        <div class="line"><span>SKU</span><b>{escape(f['sku'])}</b></div>
+        {f'<ul class="evidence">{evidence}</ul>' if evidence else ''}
+        <div class="line total"><span>Monthly damage</span><b>{money(cost)}</b></div>
+        <div class="line"><span>Yearly damage</span><b>{yearly}</b></div>
+        <p class="basis">{escape(f['cost_basis'])}</p>
       </div>
+      <details>
+        <summary>How to stop embarrassing yourself (it's one command, champ)</summary>
+        <p>{escape(fix_note)}</p>
+        <pre><code>{escape(f['fix_command'])}</code></pre>
+        <p class="hint">Suggested only. RoastBot judges; it doesn't clean up after you. That part is your job, champ.</p>
+      </details>
     </article>"""
+
+
+CSS = """
+:root {
+  --bg:#f2ede3; --panel:#fffdf8; --ink:#17130f; --muted:#6d665c; --line:#ddd4c4; --code:#efe7d8;
+  --fire:#e8590c; --fire-2:#c92a2a; --gold:#b07a00; --good:#2b8a3e; --good-soft:#dcf2e0; --hot-soft:#fde4d3;
+  --ticker-bg:#17130f; --ticker-ink:#f2ede3; --ticker-accent:#ffc53d;
+  --display:"Anton","Impact","Arial Narrow Bold",sans-serif; --body:"Inter",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --mono:"JetBrains Mono",ui-monospace,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg:#110d0a; --panel:#1b1511; --ink:#f4ede3; --muted:#a6998a; --line:#382c23; --code:#261d16;
+  --fire:#ff7a2f; --fire-2:#ff5c5c; --gold:#ffc53d; --good:#69db7c; --good-soft:#163020; --hot-soft:#3b1f12;
+  --ticker-bg:#2a1f17; --ticker-ink:#f4ede3; --ticker-accent:#ffc53d; } }
+:root[data-theme="dark"] {
+  --bg:#110d0a; --panel:#1b1511; --ink:#f4ede3; --muted:#a6998a; --line:#382c23; --code:#261d16;
+  --fire:#ff7a2f; --fire-2:#ff5c5c; --gold:#ffc53d; --good:#69db7c; --good-soft:#163020; --hot-soft:#3b1f12;
+  --ticker-bg:#2a1f17; --ticker-ink:#f4ede3; --ticker-accent:#ffc53d; }
+* { box-sizing:border-box; }
+body { margin:0; background:var(--bg); color:var(--ink); font:15px/1.55 var(--body);
+  background-image:radial-gradient(1200px 380px at 50% -200px, color-mix(in srgb, var(--fire) 22%, transparent), transparent); }
+main { max-width:1120px; margin:0 auto; padding:28px 16px 64px; }
+
+.masthead { display:flex; flex-wrap:wrap; gap:16px 24px; align-items:center; justify-content:space-between;
+  border-bottom:3px double var(--ink); padding-bottom:14px; }
+.logo { font:400 clamp(30px,5vw,46px)/1 var(--display); letter-spacing:.04em; text-transform:uppercase; margin:0; }
+.logo span { color:var(--fire); }
+.dateline { font:500 12px/1.4 var(--mono); color:var(--muted); text-transform:uppercase; letter-spacing:.06em; margin-top:6px; overflow-wrap:anywhere; }
+.index { text-align:right; }
+.index small { display:block; font:600 11px var(--mono); letter-spacing:.12em; text-transform:uppercase; color:var(--muted); }
+.index .flames i { font-style:normal; font-size:22px; filter:grayscale(1) opacity(.25); }
+.index .flames i.on { filter:none; }
+.index b { display:block; font:400 20px/1.1 var(--display); text-transform:uppercase; letter-spacing:.04em; color:var(--fire-2); }
+
+.headline { margin:22px 0 18px; padding:2px 0 2px 16px; border-left:5px solid var(--fire); }
+.headline p { margin:0; font:600 clamp(16px,2vw,20px)/1.45 var(--body); max-width:880px; }
+.headline cite { display:block; margin-top:6px; font:500 12px var(--mono); color:var(--muted); font-style:normal; }
+
+.ticker { overflow:hidden; background:var(--ticker-bg); color:var(--ticker-ink); border-radius:6px; margin-bottom:20px; }
+.track { display:inline-flex; gap:40px; padding:9px 0; white-space:nowrap; animation:scroll 40s linear infinite; font:500 13px var(--mono); }
+.track span::before { content:"🔥 "; }
+.track b { color:var(--ticker-accent); text-transform:uppercase; }
+@keyframes scroll { from { transform:translateX(0) } to { transform:translateX(-50%) } }
+@media (prefers-reduced-motion: reduce) { .track { animation:none; white-space:normal; flex-wrap:wrap; padding:9px 14px; gap:8px 24px; } }
+
+.stats { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,200px),1fr)); gap:12px; margin-bottom:24px; }
+.stat { background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:14px 16px; }
+.stat small { display:block; font:600 11px var(--mono); letter-spacing:.1em; text-transform:uppercase; color:var(--muted); }
+.stat b { display:block; font:400 clamp(28px,4vw,38px)/1.1 var(--display); color:var(--fire); font-variant-numeric:tabular-nums; margin-top:4px; }
+.stat span { font-size:12px; color:var(--muted); }
+
+.boards { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,340px),1fr)); gap:16px; margin-bottom:32px; }
+.panel { background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:18px 20px; }
+.panel h2 { margin:0 0 4px; font:400 22px/1.1 var(--display); text-transform:uppercase; letter-spacing:.03em; }
+.panel .sub { margin:0 0 14px; color:var(--muted); font-size:13px; }
+.board { list-style:none; margin:0; padding:0; display:grid; gap:14px; }
+.board li { display:grid; grid-template-columns:34px 1fr auto; gap:2px 10px; align-items:center; }
+.rank { grid-row:span 2; font:600 15px var(--mono); color:var(--muted); text-align:center; }
+.who { min-width:0; } .who b { display:block; }
+.who small { display:block; color:var(--muted); font-size:12px; overflow-wrap:anywhere; }
+.amt { font:600 15px var(--mono); text-align:right; } .amt em { font-style:normal; color:var(--muted); font-size:11px; }
+.bar { grid-column:2 / 4; height:8px; border-radius:99px; overflow:hidden; }
+.bar i { display:block; height:100%; border-radius:99px; }
+.bar.hot { background:var(--hot-soft); } .bar.hot i { background:linear-gradient(90deg,var(--gold),var(--fire),var(--fire-2)); }
+.bar.good { background:var(--good-soft); } .bar.good i { background:var(--good); }
+.empty { color:var(--muted); margin:0; }
+
+.section-title { display:flex; flex-wrap:wrap; align-items:baseline; gap:4px 12px; margin:0 0 14px; font:400 28px/1 var(--display); text-transform:uppercase; letter-spacing:.03em; }
+.section-title small { font:500 12px var(--mono); color:var(--muted); letter-spacing:.06em; }
+.cards { display:grid; grid-template-columns:repeat(auto-fill,minmax(min(100%,330px),1fr)); gap:18px; }
+.card { position:relative; background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:18px 20px 16px;
+  display:flex; flex-direction:column; min-width:0; overflow:hidden; box-shadow:0 10px 30px -18px rgba(0,0,0,.35); }
+.card header { display:flex; flex-direction:column; gap:2px; padding-right:120px; }
+.exhibit { font:600 11px var(--mono); letter-spacing:.14em; text-transform:uppercase; color:var(--fire); }
+.kind { font-size:12px; color:var(--muted); }
+.card h3 { margin:8px 0 2px; font:600 16px/1.3 var(--mono); overflow-wrap:anywhere; }
+.where { margin:0 0 12px; font-size:12px; color:var(--muted); } .where b { color:var(--ink); white-space:nowrap; }
+.stamp { position:absolute; top:16px; right:-4px; transform:rotate(8deg); padding:4px 12px; border:3px solid currentColor; border-radius:6px;
+  font:400 15px/1 var(--display); letter-spacing:.06em; text-transform:uppercase; background:var(--panel); }
+.stamp.hot { color:var(--fire-2); } .stamp.warm { color:var(--fire); } .stamp.mild { color:var(--gold); }
+blockquote { margin:0 0 14px; font-size:15.5px; font-weight:500; line-height:1.55; }
+blockquote::before { content:"\\201C"; font:400 44px/0 var(--display); color:var(--fire); vertical-align:-18px; margin-right:4px; }
+.receipt { font:12.5px/1.5 var(--mono); background:var(--code); border-radius:8px; padding:10px 12px; margin-bottom:12px; }
+.receipt .line { display:flex; justify-content:space-between; gap:12px; }
+.receipt .line b { font-weight:600; text-align:right; overflow-wrap:anywhere; }
+.receipt .total { border-top:1px dashed var(--muted); margin-top:6px; padding-top:6px; color:var(--fire-2); font-size:14px; }
+.evidence { list-style:none; margin:4px 0 0; padding:0; }
+.evidence li { display:flex; justify-content:space-between; gap:12px; color:var(--muted); }
+.evidence li b { color:var(--ink); font-weight:500; text-align:right; overflow-wrap:anywhere; }
+.basis { margin:6px 0 0; color:var(--muted); font-size:11px; }
+details { margin-top:auto; border-top:1px dashed var(--line); padding-top:10px; font-size:13px; }
+summary { cursor:pointer; font-weight:600; color:var(--fire); }
+details p { margin:8px 0; }
+pre { background:var(--code); border-radius:8px; padding:10px; margin:0 0 6px; overflow-x:auto; font:12px var(--mono); }
+.hint { color:var(--muted); font-size:12px; }
+.verdict { margin:-4px 0 14px; font:500 12px var(--mono); color:var(--muted); text-transform:uppercase; letter-spacing:.04em; }
+.verdict b { color:var(--fire-2); }
+.hate { margin-bottom:32px; }
+.hate ul { margin:0; padding:0; list-style:none; display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr)); gap:10px 24px; }
+.hate li { font-weight:600; padding-left:26px; position:relative; }
+.hate li::before { content:"🖕"; position:absolute; left:0; }
+.clean { background:var(--panel); border:1px dashed var(--line); border-radius:14px; padding:28px; text-align:center; color:var(--muted); }
+.errors { color:var(--fire-2); font:12px var(--mono); }
+footer { margin-top:36px; padding-top:14px; border-top:3px double var(--ink); color:var(--muted); font:12px/1.6 var(--mono); }
+"""
+
+FONTS = ('<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>'
+         '<link href="https://fonts.googleapis.com/css2?family=Anton&family=Inter:wght@400;500;600;800'
+         '&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">')
 
 
 def render(scan: dict, findings: list[dict], roasts: dict, saved: dict[str, float]) -> str:
     per_finding = roasts.get("findings", {})
     owner_lines = roasts.get("owners", {})
     total = round(sum(f["monthly_cost_usd"] or 0 for f in findings), 2)
-    headline = roasts.get("headline") or f"{len(findings)} pieces of cloud waste found."
+    headline = roasts.get("headline") or f"{len(findings)} pieces of cloud waste found. Nobody is surprised. Everybody should be ashamed."
+    flames, severity = fire_index(total)
+    shame_rows = shame_leaderboard(findings)
+    owners = len(shame_rows)
+    plural = lambda n, word: f"{n} {word}{'s' if n != 1 else ''}"
 
-    shame = [(o, c, f"{n} item{'s' if n != 1 else ''}" + (f" · {owner_lines[o]}" if o in owner_lines else ""))
-             for o, c, n in shame_leaderboard(findings)]
-    heroes = [(o, c, "/mo saved") for o, c in saved.items()]
-    cards = "".join(finding_card(f, per_finding.get(f["id"], {})) for f in findings)
+    shame = [(o, c, plural(n, "offence") + (f" · {owner_lines[o]}" if o in owner_lines else "")) for o, c, n in shame_rows]
+    heroes = [(o, c, "saved. Finally. Took you long enough.") for o, c in saved.items()]
+    cards = "".join(finding_card(i, f, per_finding.get(f["id"], {})) for i, f in enumerate(findings))
     errors = "".join(f"<li>{escape(e['detector'])}: {escape(e['error'])}</li>" for e in scan.get("errors", []))
+    bonus = roasts.get("insults", [])
+    jabs = [f"<span><b>{escape(o)}</b> {escape(line)}</span>" for o, line in owner_lines.items()]
+    canned = [f"<span>{escape(i)}</span>" for i in (bonus or INSULTS)]
+    mixed = [item for pair in zip(canned, jabs + canned) for item in pair] if jabs else canned
+    ticker = f'<div class="ticker"><div class="track">{"".join(mixed * 2)}</div></div>'
+    hate_mail = "".join(f"<li>{escape(i)}</li>" for i in (bonus or [pick(INSULTS, scan["scanned_at"] + str(k)) for k in range(4)]))
+    scanned = scan["scanned_at"].replace("T", " ").split("+")[0]
+    flame_icons = "".join(f'<i class="{"on" if i < flames else ""}">🔥</i>' for i in range(5))
+    clean = ('<div class="clean">No waste found. Either you are a FinOps saint or the scan is lying. '
+             'Statistically, the scan is lying.</div>')
 
     return f"""<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>FinOps Roast Report</title>
-<style>
-:root {{ --bg:#f6f4ef; --panel:#fff; --ink:#1d1b18; --muted:#6b6660; --line:#e4dfd6;
-        --hot:#d9480f; --hot-soft:#ffe8d9; --good:#2b8a3e; --good-soft:#e3f5e6; --code:#f1eee8; }}
-@media (prefers-color-scheme: dark) {{ :root {{ --bg:#141311; --panel:#1e1c19; --ink:#efebe4; --muted:#a39d94;
-        --line:#34302b; --hot:#ff8a4c; --hot-soft:#3a2216; --good:#69db7c; --good-soft:#1b3121; --code:#29261f; }} }}
-* {{ box-sizing:border-box; }}
-body {{ margin:0; background:var(--bg); color:var(--ink); font:15px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif; }}
-main {{ max-width:1100px; margin:0 auto; padding:32px 16px 64px; }}
-.hero {{ display:flex; flex-wrap:wrap; gap:24px; align-items:end; justify-content:space-between; margin-bottom:28px; }}
-.hero h1 {{ font-size:clamp(26px,4vw,40px); line-height:1.15; margin:6px 0 0; max-width:700px; }}
-.eyebrow {{ color:var(--hot); font-weight:700; letter-spacing:.08em; text-transform:uppercase; font-size:12px; }}
-.total {{ text-align:right; }}
-.total b {{ display:block; font-size:clamp(34px,6vw,56px); color:var(--hot); line-height:1; font-variant-numeric:tabular-nums; }}
-.total span {{ color:var(--muted); font-size:13px; }}
-.boards {{ display:grid; grid-template-columns:repeat(auto-fit,minmax(300px,1fr)); gap:16px; margin-bottom:28px; }}
-.panel {{ background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:18px 20px; }}
-.panel h2 {{ margin:0 0 12px; font-size:16px; }}
-.panel ol {{ list-style:none; margin:0; padding:0; display:grid; gap:10px; }}
-.panel li {{ display:grid; grid-template-columns:minmax(90px,1fr) 2fr auto; gap:10px; align-items:center; }}
-.panel li.empty {{ display:block; color:var(--muted); }}
-.who {{ font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }}
-.bar {{ height:10px; border-radius:99px; overflow:hidden; }}
-.bar i {{ display:block; height:100%; border-radius:99px; }}
-.bar.hot {{ background:var(--hot-soft); }} .bar.hot i {{ background:var(--hot); }}
-.bar.good {{ background:var(--good-soft); }} .bar.good i {{ background:var(--good); }}
-.amt {{ font-variant-numeric:tabular-nums; text-align:right; font-weight:600; }}
-.amt small {{ display:block; font-weight:400; color:var(--muted); font-size:11px; max-width:220px; }}
-.cards {{ display:grid; grid-template-columns:repeat(auto-fill,minmax(320px,1fr)); gap:16px; }}
-.card {{ background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:18px 20px; display:flex; flex-direction:column; min-width:0; }}
-.card header {{ display:flex; justify-content:space-between; align-items:center; gap:8px; }}
-.tag {{ font-size:12px; text-transform:uppercase; letter-spacing:.06em; color:var(--muted); font-weight:600; }}
-.cost {{ font-size:22px; font-weight:800; color:var(--hot); font-variant-numeric:tabular-nums; }}
-.cost small {{ font-size:12px; color:var(--muted); font-weight:500; }}
-.roast {{ font-size:17px; font-weight:600; margin:10px 0 14px; }}
-dl {{ display:grid; grid-template-columns:auto 1fr; gap:4px 12px; margin:0 0 14px; font-size:13px; }}
-dt {{ color:var(--muted); }} dd {{ margin:0; overflow-wrap:anywhere; }}
-.fix {{ margin-top:auto; border-top:1px dashed var(--line); padding-top:12px; font-size:13px; }}
-.fix p {{ margin:0 0 8px; }}
-pre {{ background:var(--code); border-radius:8px; padding:10px; margin:0 0 8px; overflow-x:auto; font-size:12px; }}
-.hint {{ color:var(--muted); }}
-.meta {{ color:var(--muted); font-size:12px; margin-top:28px; }}
-.errors {{ color:var(--hot); }}
-</style></head>
+<title>The Daily Burn</title>
+{FONTS}
+<style>{CSS}</style></head>
 <body><main>
-  <section class="hero">
-    <div><div class="eyebrow">FinOps Roast Report</div><h1>{escape(headline)}</h1></div>
-    <div class="total"><b>{money(total)}</b><span>per month of waste · {money(total * 12)} per year</span></div>
+  <header class="masthead">
+    <div>
+      <h1 class="logo">The Daily <span>Burn</span></h1>
+      <div class="dateline">Your cloud bill's worst nightmare · Read it and weep · {escape(scanned)} UTC · {escape(str(scan['scope']))}</div>
+    </div>
+    <div class="index"><small>Dumpster Fire Index</small><div class="flames">{flame_icons}</div><b>{severity}</b></div>
+  </header>
+
+  <section class="headline"><p>{escape(headline)}</p><cite>RoastBot, who has seen your invoice and needs a drink</cite></section>
+  {ticker}
+
+  <section class="stats">
+    <div class="stat"><small>Monthly burn</small><b>{money(total)}</b><span>torched every month, apparently on purpose</span></div>
+    <div class="stat"><small>Yearly burn</small><b>{money(total * 12)}</b><span>if nobody lifts a finger (spoiler: they won't)</span></div>
+    <div class="stat"><small>Offences</small><b>{len(findings)}</b><span>across {plural(owners, 'owner')} who really should know better</span></div>
+    <div class="stat"><small>In coffees</small><b>☕ {total / 5:,.0f}</b><span>per month you could have drunk instead of wasted</span></div>
   </section>
+
   <section class="boards">
-    <div class="panel"><h2>🔥 Wall of Shame: current waste by owner</h2><ol>{bar_rows(shame, 'hot')}</ol></div>
-    <div class="panel"><h2>🏆 Savings Heroes: waste fixed since earlier scans</h2><ol>{bar_rows(heroes, 'good')}</ol></div>
+    <div class="panel"><h2>🔥 Wall of Shame</h2><p class="sub">Ranked by how much money they lit on fire. Let's give them a hand. 👏 Slowly.</p>
+      {board(shame, 'hot', 'Nobody. Which is frankly suspicious.')}</div>
+    <div class="panel"><h2>🏆 Savings Heroes</h2><p class="sub">People who actually fixed their shit. Rarer than a quiet on-call week.</p>
+      {board(heroes, 'good', '🦗 Crickets. Not one of you has fixed a damn thing. Shocking. Truly.')}</div>
   </section>
-  <section class="cards">{cards or '<p>No waste found. Suspicious, but congratulations.</p>'}</section>
+
+  <section class="panel hate"><h2>💌 Hate Mail</h2><p class="sub">Unsolicited feedback, delivered with love. Not really.</p>
+    <ul>{hate_mail}</ul></section>
+
+  <h2 class="section-title">The Evidence <small>{plural(len(findings), 'exhibit')} of pure negligence, worst first</small></h2>
+  <section class="cards">{cards or clean}</section>
   {f'<ul class="errors">{errors}</ul>' if errors else ''}
-  <p class="meta">Scanned {escape(scan['scanned_at'])} · scope: {escape(str(scan['scope']))} ·
-    costs are pay-as-you-go list-price estimates, not invoice amounts · generated read-only.</p>
+
+  <footer>Prices are pay-as-you-go list estimates, not invoice amounts. Your dignity was not priced; it was already worth $0.
+    Generated read-only: RoastBot judges, it doesn't clean up your mess. Complaints go to /dev/null.</footer>
 </main></body></html>"""
 
 

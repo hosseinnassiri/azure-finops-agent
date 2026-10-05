@@ -32,7 +32,7 @@ def main(argv=None) -> int:
 
     p = sub.add_parser("demo")
     p.add_argument("action", choices=["plant", "cleanup"])
-    p.add_argument("--location", default="eastus")
+    p.add_argument("--location", default="canadacentral")
     p.add_argument("--resource-group", default="rg-roastbot-demo")
 
     args = parser.parse_args(argv)

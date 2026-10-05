@@ -44,7 +44,8 @@ claude             # once, if Claude Code isn't logged in yet. The agent reuses 
 Add `--model <id>` before the subcommand to pick a Claude model (default: your Claude Code default).
 
 ## Live demo
-1. The evening before: `uv run roastbot demo plant` (sandbox subscription, ~$0.45/h).
+1. The evening before: `uv run roastbot demo plant` (sandbox subscription, ~$0.30/h). It plants a disk, IPs, NICs,
+   a stopped VM, an idle VM and a snapshot. There's no App Service plan, because the demo subscription has no quota for one.
 2. Demo: `uv run roastbot roast --demo`. Optional encore: someone runs the suggested `az disk delete ...` for the P30
    disk, then `uv run roastbot scan --demo` (seconds, no LLM). team-data jumps onto Savings Heroes.
 3. After: `uv run roastbot demo cleanup`.
