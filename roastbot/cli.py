@@ -1,10 +1,11 @@
 """roastbot CLI.
 
-    uv run roastbot roast [--demo] [--subscription ID]   # the agent: sweep, verify via Azure MCP, roast, report
-    uv run roastbot scan [--demo]                        # sweep only, no LLM
-    uv run roastbot report [--open]                      # re-render the report from saved files
-    uv run roastbot demo plant | cleanup                 # plant / remove demo waste in a sandbox
+uv run roastbot roast [--demo] [--subscription ID]   # the agent: sweep, verify via Azure MCP, roast, report
+uv run roastbot scan [--demo]                        # sweep only, no LLM
+uv run roastbot report [--open]                      # re-render the report from saved files
+uv run roastbot demo plant | cleanup                 # plant / remove demo waste in a sandbox
 """
+
 from __future__ import annotations
 
 import argparse
@@ -16,7 +17,9 @@ from . import agent, demo, report, scan
 
 
 def main(argv=None) -> int:
-    parser = argparse.ArgumentParser(prog="roastbot", description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser = argparse.ArgumentParser(
+        prog="roastbot", description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
     parser.add_argument("--out", default="out", type=Path)
     parser.add_argument("--model", help="Claude model id (default: your Claude Code default)")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -50,7 +53,11 @@ def main(argv=None) -> int:
     elif args.command == "report":
         print(report.finalize(out, open_browser=args.open))
     elif args.command == "demo":
-        return demo.plant(args.resource_group, args.location) if args.action == "plant" else demo.cleanup(args.resource_group)
+        return (
+            demo.plant(args.resource_group, args.location)
+            if args.action == "plant"
+            else demo.cleanup(args.resource_group)
+        )
     return 0
 
 

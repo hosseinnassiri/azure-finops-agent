@@ -1,3 +1,25 @@
+# Python / uv
 .venv/
 __pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+
+# RoastBot output: scans, roasts, reports, leaderboard history (contains resource IDs)
 out/
+
+# Secrets
+.env
+.env.*
+
+# Claude Code personal settings (shared ones live in .claude/settings.json)
+.claude/settings.local.json
+
+# Editors / OS
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+!.vscode/launch.json
+.idea/
+.DS_Store
+Thumbs.db

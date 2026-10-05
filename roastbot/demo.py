@@ -3,6 +3,7 @@
 Cost while it exists: about $0.30/hour (mostly the P30 disk and two small VMs), so ~$4 overnight.
 The idle-VM check needs a few hours of CPU metrics, so plant the evening before the demo.
 """
+
 from __future__ import annotations
 
 import shutil
@@ -16,8 +17,9 @@ def az(*args: str, capture: bool = False) -> str:
     exe = shutil.which("az")
     if exe is None:
         raise SystemExit("Azure CLI (az) not found on PATH.")
-    result = subprocess.run([exe, *args, *([] if capture else ["-o", "none"])],
-                            check=True, text=True, capture_output=capture)
+    result = subprocess.run(
+        [exe, *args, *([] if capture else ["-o", "none"])], check=True, text=True, capture_output=capture
+    )
     return (result.stdout or "").strip()
 
 
@@ -29,19 +31,124 @@ def plant(rg: str, location: str) -> int:
     vm = ["--image", "Ubuntu2404", "--admin-username", "azureuser", "--generate-ssh-keys"]
     steps = [
         ("Resource group", ["group", "create", "-n", rg, "-l", location, "--tags", *TAGS]),
-        ("1/6 Unattached 1 TiB premium disk (team-data, ~$135/mo)",
-         ["disk", "create", "-g", rg, "-n", "disk-old-migration-backup", "--size-gb", "1024", "--sku", "Premium_LRS", *owned("team-data")]),
-        ("2/6 Public IPs attached to nothing (team-web)",
-         ["network", "public-ip", "create", "-g", rg, "-n", "pip-legacy-lb", "--sku", "Standard", "--allocation-method", "Static", *owned("team-web")]),
-        (None, ["network", "public-ip", "create", "-g", rg, "-n", "pip-test-do-not-delete", "--sku", "Standard", "--allocation-method", "Static", *owned("team-web")]),
-        ("3/6 VNet + orphaned NIC (team-platform)",
-         ["network", "vnet", "create", "-g", rg, "-n", "vnet-roastbot", "--address-prefix", "10.42.0.0/16", "--subnet-name", "default", "--subnet-prefix", "10.42.0.0/24"]),
-        (None, ["network", "nic", "create", "-g", rg, "-n", "nic-ghost-of-vm-past", "--vnet-name", "vnet-roastbot", "--subnet", "default", *owned("team-platform")]),
+        (
+            "1/6 Unattached 1 TiB premium disk (team-data, ~$135/mo)",
+            [
+                "disk",
+                "create",
+                "-g",
+                rg,
+                "-n",
+                "disk-old-migration-backup",
+                "--size-gb",
+                "1024",
+                "--sku",
+                "Premium_LRS",
+                *owned("team-data"),
+            ],
+        ),
+        (
+            "2/6 Public IPs attached to nothing (team-web)",
+            [
+                "network",
+                "public-ip",
+                "create",
+                "-g",
+                rg,
+                "-n",
+                "pip-legacy-lb",
+                "--sku",
+                "Standard",
+                "--allocation-method",
+                "Static",
+                *owned("team-web"),
+            ],
+        ),
+        (
+            None,
+            [
+                "network",
+                "public-ip",
+                "create",
+                "-g",
+                rg,
+                "-n",
+                "pip-test-do-not-delete",
+                "--sku",
+                "Standard",
+                "--allocation-method",
+                "Static",
+                *owned("team-web"),
+            ],
+        ),
+        (
+            "3/6 VNet + orphaned NIC (team-platform)",
+            [
+                "network",
+                "vnet",
+                "create",
+                "-g",
+                rg,
+                "-n",
+                "vnet-roastbot",
+                "--address-prefix",
+                "10.42.0.0/16",
+                "--subnet-name",
+                "default",
+                "--subnet-prefix",
+                "10.42.0.0/24",
+            ],
+        ),
+        (
+            None,
+            [
+                "network",
+                "nic",
+                "create",
+                "-g",
+                rg,
+                "-n",
+                "nic-ghost-of-vm-past",
+                "--vnet-name",
+                "vnet-roastbot",
+                "--subnet",
+                "default",
+                *owned("team-platform"),
+            ],
+        ),
         # Pre-created NICs mean az creates no public IP or NSG for the VMs.
-        ("4/6 VM stopped but NOT deallocated (team-platform)",
-         ["network", "nic", "create", "-g", rg, "-n", "nic-jumpbox", "--vnet-name", "vnet-roastbot", "--subnet", "default"]),
-        ("5/6 Idle running VM (team-data): NIC first",
-         ["network", "nic", "create", "-g", rg, "-n", "nic-etl-worker", "--vnet-name", "vnet-roastbot", "--subnet", "default"]),
+        (
+            "4/6 VM stopped but NOT deallocated (team-platform)",
+            [
+                "network",
+                "nic",
+                "create",
+                "-g",
+                rg,
+                "-n",
+                "nic-jumpbox",
+                "--vnet-name",
+                "vnet-roastbot",
+                "--subnet",
+                "default",
+            ],
+        ),
+        (
+            "5/6 Idle running VM (team-data): NIC first",
+            [
+                "network",
+                "nic",
+                "create",
+                "-g",
+                rg,
+                "-n",
+                "nic-etl-worker",
+                "--vnet-name",
+                "vnet-roastbot",
+                "--subnet",
+                "default",
+            ],
+        ),
     ]
     failed = []
     for label, args in steps:
@@ -53,8 +160,10 @@ def plant(rg: str, location: str) -> int:
             failed.append(label or " ".join(args[:3]))
 
     # Small sizes hit regional capacity limits (SkuNotAvailable) a lot, so try a few until one sticks.
-    for name, nic, owner in (("vm-jumpbox-stopped", "nic-jumpbox", "team-platform"),
-                             ("vm-etl-worker-idle", "nic-etl-worker", "team-data")):
+    for name, nic, owner in (
+        ("vm-jumpbox-stopped", "nic-jumpbox", "team-platform"),
+        ("vm-etl-worker-idle", "nic-etl-worker", "team-data"),
+    ):
         print(f"   creating {name}")
         for size in VM_SIZES:
             try:
@@ -72,8 +181,30 @@ def plant(rg: str, location: str) -> int:
 
     print("6/6 Snapshot nobody will remember (team-platform)")
     try:
-        os_disk = az("vm", "show", "-g", rg, "-n", "vm-jumpbox-stopped", "--query", "storageProfile.osDisk.managedDisk.id", "-o", "tsv", capture=True)
-        az("snapshot", "create", "-g", rg, "-n", "snap-before-upgrade-final-v2", "--source", os_disk, *owned("team-platform"))
+        os_disk = az(
+            "vm",
+            "show",
+            "-g",
+            rg,
+            "-n",
+            "vm-jumpbox-stopped",
+            "--query",
+            "storageProfile.osDisk.managedDisk.id",
+            "-o",
+            "tsv",
+            capture=True,
+        )
+        az(
+            "snapshot",
+            "create",
+            "-g",
+            rg,
+            "-n",
+            "snap-before-upgrade-final-v2",
+            "--source",
+            os_disk,
+            *owned("team-platform"),
+        )
     except subprocess.CalledProcessError:
         failed.append("snapshot")
 

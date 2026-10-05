@@ -2,6 +2,7 @@
 
 Works without roasts.json too: findings fall back to canned insults.
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -32,7 +33,7 @@ def savings_leaderboard(history_dir: Path) -> dict[str, float]:
     """Credit owners for findings that disappeared between consecutive scans of the same scope."""
     snapshots = [json.loads(p.read_text(encoding="utf-8")) for p in sorted(history_dir.glob("*.json"))]
     saved: dict[str, float] = defaultdict(float)
-    for before, after in zip(snapshots, snapshots[1:]):
+    for before, after in zip(snapshots, snapshots[1:], strict=False):
         if before["scope"] != after["scope"]:
             continue
         remaining = {f["id"] for f in after["findings"]}
@@ -83,33 +84,59 @@ def confirmed(scan: dict, roasts: dict) -> list[dict]:
 
 
 FIRE_INDEX = [  # (monthly $ below which, flames, label)
-    (0.01, 0, "Suspiciously clean"), (25, 1, "Mildly smelly"), (100, 2, "Grease fire"),
-    (500, 3, "Dumpster fire"), (2000, 4, "Tire fire"), (float("inf"), 5, "Call the fire department"),
+    (0.01, 0, "Suspiciously clean"),
+    (25, 1, "Mildly smelly"),
+    (100, 2, "Grease fire"),
+    (500, 3, "Dumpster fire"),
+    (2000, 4, "Tire fire"),
+    (float("inf"), 5, "Call the fire department"),
 ]
 EPITHETS = [
-    "Certified Budget Arsonist", "Click-Ops Caveman", "Tag-Allergic Gremlin", "Delete-Button Coward",
-    "Professional Cloud Hoarder", "YAML Goblin", "Invoice Denier", "Chief Waste Officer",
-    "Serial Resource Abandoner", "Azure's Favourite Customer", "FinOps Felon", "Human Cost Overrun",
-    "Distinguished Engineer of Nothing", "Free-Trial Mindset, Enterprise Bill", "Terraform Tourist",
-    "Microsoft's Shareholder of the Month", "Ghost Infrastructure Landlord", "Portal Click Enthusiast",
+    "Certified Budget Arsonist",
+    "Click-Ops Dumbass",
+    "Tag-Allergic Jackass",
+    "Delete-Button Chickenshit",
+    "Professional Cloud Hoarder",
+    "Half-Assed Architect",
+    "Invoice-Ignoring Asshat",
+    "Chief Shitshow Officer",
+    "Serial Resource Abandoner",
+    "Azure's Favourite Dumbass",
+    "FinOps Felon",
+    "Human Cost Overrun",
+    "Distinguished Engineer of Fuck-All",
+    "Free-Trial Brain, Enterprise Bill",
+    "Terraform Tourist",
+    "Microsoft's Shareholder of the Goddamn Month",
+    "Ghost Infrastructure Landlord",
+    "Portal-Clicking Clown",
 ]
 INSULTS = [
-    "Your cloud bill has more red flags than a Soviet parade.",
-    "Somewhere a CFO just felt a disturbance in the force.",
-    "Microsoft thanks you for your generous donation.",
-    "This estate isn't architected. It's abandoned.",
-    "Tagging is free. You still couldn't be bothered.",
-    "'Temporary' is the most expensive word in your vocabulary.",
-    "Your resources have been running longer than your attention span.",
-    "The delete button won't bite. Promise.",
-    "Infrastructure as Code? More like Infrastructure as Clutter.",
-    "If waste were a KPI, you'd all be getting promoted.",
-    "Your subscription is a museum of bad decisions, and admission costs $0.005 an hour.",
-    "Cost optimization called. It wants to know if you're even trying.",
-    "Every orphaned resource here is somebody's 'I'll clean it up on Friday'.",
+    "Your cloud bill has more red flags than a goddamn Soviet parade.",
+    "Somewhere a CFO just felt a disturbance in the force and said 'what the fuck'.",
+    "Microsoft thanks you for your generous fucking donation.",
+    "This estate isn't architected. It's abandoned, like a shitty Airbnb.",
+    "Tagging is free. You still couldn't be bothered, you lazy asshats.",
+    "'Temporary' is the most expensive goddamn word in your vocabulary.",
+    "Your resources have been running longer than your attention span. Which, granted, isn't hard.",
+    "The delete button won't bite, you absolute chickenshits.",
+    "Infrastructure as Code? More like Infrastructure as Horseshit.",
+    "If pissing money away were a KPI, you'd all be getting promoted.",
+    "Your subscription is a museum of dumbass decisions, and admission costs $0.005 an hour.",
+    "Cost optimization called. It wants to know what the fuck you're doing.",
+    "Every orphaned resource here is some jackass's 'I'll clean it up on Friday'.",
     "Even Azure Advisor gave up on you and started recommending therapy.",
 ]
-STAMPS = [(100, "Dumpster fire", "hot"), (25, "Certified garbage", "warm"), (1, "Petty larceny", "mild"), (0, "Digital litter", "mild")]
+STAMPS = [
+    (100, "Dumpster fire", "hot"),
+    (25, "Certified garbage", "warm"),
+    (1, "Petty larceny", "mild"),
+    (0, "Digital litter", "mild"),
+]
+
+
+def plural(n: int, word: str) -> str:
+    return f"{n} {word}{'s' if n != 1 else ''}"
 
 
 def fire_index(total: float) -> tuple[int, str]:
@@ -153,30 +180,32 @@ def finding_card(n: int, f: dict, roast: dict) -> str:
     cost = f["monthly_cost_usd"]
     epithet = roast.get("epithet") or pick(EPITHETS, f["id"])
     label, tone = stamp_for(cost)
-    evidence = "".join(f"<li><span>{escape(str(k).replace('_', ' '))}</span><b>{escape(str(v))}</b></li>"
-                       for k, v in f["evidence"].items())
+    evidence = "".join(
+        f"<li><span>{escape(str(k).replace('_', ' '))}</span><b>{escape(str(v))}</b></li>"
+        for k, v in f["evidence"].items()
+    )
     fix_note = roast.get("fix_note") or f["fix_summary"]
     yearly = money(cost * 12) if cost is not None else "n/a"
     return f"""
     <article class="card">
       <div class="stamp {tone}">{escape(label)}</div>
-      <header><span class="exhibit">Exhibit {exhibit(n)}</span><span class="kind">{escape(f['title'])}</span></header>
-      <h3>{escape(f['resource_name'])}</h3>
-      <p class="where">{escape(f['resource_group'])} · {escape(f['location'])} · owned by <b>{escape(f['owner'])}</b></p>
-      <blockquote>{escape(roast.get('roast') or FALLBACK_ROASTS.get(f['detector'], f['title']))}</blockquote>
-      <p class="verdict">Verdict: <b>{escape(f['owner'])}</b>, {escape(epithet)}</p>
+      <header><span class="exhibit">Exhibit {exhibit(n)}</span><span class="kind">{escape(f["title"])}</span></header>
+      <h3>{escape(f["resource_name"])}</h3>
+      <p class="where">{escape(f["resource_group"])} · {escape(f["location"])} · owned by <b>{escape(f["owner"])}</b></p>
+      <blockquote>{escape(roast.get("roast") or FALLBACK_ROASTS.get(f["detector"], f["title"]))}</blockquote>
+      <p class="verdict">Verdict: <b>{escape(f["owner"])}</b>, {escape(epithet)}</p>
       <div class="receipt">
-        <div class="line"><span>SKU</span><b>{escape(f['sku'])}</b></div>
-        {f'<ul class="evidence">{evidence}</ul>' if evidence else ''}
+        <div class="line"><span>SKU</span><b>{escape(f["sku"])}</b></div>
+        {f'<ul class="evidence">{evidence}</ul>' if evidence else ""}
         <div class="line total"><span>Monthly damage</span><b>{money(cost)}</b></div>
         <div class="line"><span>Yearly damage</span><b>{yearly}</b></div>
-        <p class="basis">{escape(f['cost_basis'])}</p>
+        <p class="basis">{escape(f["cost_basis"])}</p>
       </div>
       <details>
-        <summary>How to stop embarrassing yourself (it's one command, champ)</summary>
+        <summary>How to stop embarrassing yourself (it's one fucking command, champ)</summary>
         <p>{escape(fix_note)}</p>
-        <pre><code>{escape(f['fix_command'])}</code></pre>
-        <p class="hint">Suggested only. RoastBot judges; it doesn't clean up after you. That part is your job, champ.</p>
+        <pre><code>{escape(f["fix_command"])}</code></pre>
+        <p class="hint">Suggested only. RoastBot judges; it doesn't clean up after you. That part is your goddamn job, champ.</p>
       </details>
     </article>"""
 
@@ -285,35 +314,45 @@ pre { background:var(--code); border-radius:8px; padding:10px; margin:0 0 6px; o
 footer { margin-top:36px; padding-top:14px; border-top:3px double var(--ink); color:var(--muted); font:12px/1.6 var(--mono); }
 """
 
-FONTS = ('<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>'
-         '<link href="https://fonts.googleapis.com/css2?family=Anton&family=Inter:wght@400;500;600;800'
-         '&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">')
+FONTS = (
+    '<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>'
+    '<link href="https://fonts.googleapis.com/css2?family=Anton&family=Inter:wght@400;500;600;800'
+    '&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">'
+)
 
 
 def render(scan: dict, findings: list[dict], roasts: dict, saved: dict[str, float]) -> str:
     per_finding = roasts.get("findings", {})
     owner_lines = roasts.get("owners", {})
     total = round(sum(f["monthly_cost_usd"] or 0 for f in findings), 2)
-    headline = roasts.get("headline") or f"{len(findings)} pieces of cloud waste found. Nobody is surprised. Everybody should be ashamed."
+    headline = (
+        roasts.get("headline")
+        or f"{len(findings)} pieces of cloud waste found. Nobody is surprised. Everybody should be ashamed."
+    )
     flames, severity = fire_index(total)
     shame_rows = shame_leaderboard(findings)
     owners = len(shame_rows)
-    plural = lambda n, word: f"{n} {word}{'s' if n != 1 else ''}"
 
-    shame = [(o, c, plural(n, "offence") + (f" · {owner_lines[o]}" if o in owner_lines else "")) for o, c, n in shame_rows]
+    shame = [
+        (o, c, plural(n, "offence") + (f" · {owner_lines[o]}" if o in owner_lines else "")) for o, c, n in shame_rows
+    ]
     heroes = [(o, c, "saved. Finally. Took you long enough.") for o, c in saved.items()]
     cards = "".join(finding_card(i, f, per_finding.get(f["id"], {})) for i, f in enumerate(findings))
     errors = "".join(f"<li>{escape(e['detector'])}: {escape(e['error'])}</li>" for e in scan.get("errors", []))
     bonus = roasts.get("insults", [])
     jabs = [f"<span><b>{escape(o)}</b> {escape(line)}</span>" for o, line in owner_lines.items()]
     canned = [f"<span>{escape(i)}</span>" for i in (bonus or INSULTS)]
-    mixed = [item for pair in zip(canned, jabs + canned) for item in pair] if jabs else canned
+    mixed = [item for pair in zip(canned, jabs + canned, strict=False) for item in pair] if jabs else canned
     ticker = f'<div class="ticker"><div class="track">{"".join(mixed * 2)}</div></div>'
-    hate_mail = "".join(f"<li>{escape(i)}</li>" for i in (bonus or [pick(INSULTS, scan["scanned_at"] + str(k)) for k in range(4)]))
+    hate_mail = "".join(
+        f"<li>{escape(i)}</li>" for i in (bonus or [pick(INSULTS, scan["scanned_at"] + str(k)) for k in range(4)])
+    )
     scanned = scan["scanned_at"].replace("T", " ").split("+")[0]
     flame_icons = "".join(f'<i class="{"on" if i < flames else ""}">🔥</i>' for i in range(5))
-    clean = ('<div class="clean">No waste found. Either you are a FinOps saint or the scan is lying. '
-             'Statistically, the scan is lying.</div>')
+    clean = (
+        '<div class="clean">No waste found. Either you are a FinOps saint or the scan is lying. '
+        "Statistically, the scan is lying.</div>"
+    )
 
     return f"""<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
@@ -324,36 +363,36 @@ def render(scan: dict, findings: list[dict], roasts: dict, saved: dict[str, floa
   <header class="masthead">
     <div>
       <h1 class="logo">The Daily <span>Burn</span></h1>
-      <div class="dateline">Your cloud bill's worst nightmare · Read it and weep · {escape(scanned)} UTC · {escape(str(scan['scope']))}</div>
+      <div class="dateline">Your cloud bill's worst fucking nightmare · Read it and weep · {escape(scanned)} UTC · {escape(str(scan["scope"]))}</div>
     </div>
     <div class="index"><small>Dumpster Fire Index</small><div class="flames">{flame_icons}</div><b>{severity}</b></div>
   </header>
 
-  <section class="headline"><p>{escape(headline)}</p><cite>RoastBot, who has seen your invoice and needs a drink</cite></section>
+  <section class="headline"><p>{escape(headline)}</p><cite>RoastBot, who has seen your invoice and needs a fucking drink</cite></section>
   {ticker}
 
   <section class="stats">
-    <div class="stat"><small>Monthly burn</small><b>{money(total)}</b><span>torched every month, apparently on purpose</span></div>
-    <div class="stat"><small>Yearly burn</small><b>{money(total * 12)}</b><span>if nobody lifts a finger (spoiler: they won't)</span></div>
-    <div class="stat"><small>Offences</small><b>{len(findings)}</b><span>across {plural(owners, 'owner')} who really should know better</span></div>
-    <div class="stat"><small>In coffees</small><b>☕ {total / 5:,.0f}</b><span>per month you could have drunk instead of wasted</span></div>
+    <div class="stat"><small>Monthly burn</small><b>{money(total)}</b><span>pissed away every month, apparently on purpose</span></div>
+    <div class="stat"><small>Yearly burn</small><b>{money(total * 12)}</b><span>if nobody lifts a goddamn finger (spoiler: they won't)</span></div>
+    <div class="stat"><small>Offences</small><b>{len(findings)}</b><span>across {plural(owners, "owner")} who should know better, for fuck's sake</span></div>
+    <div class="stat"><small>In coffees</small><b>☕ {total / 5:,.0f}</b><span>per month you could've drunk instead of setting shit on fire</span></div>
   </section>
 
   <section class="boards">
-    <div class="panel"><h2>🔥 Wall of Shame</h2><p class="sub">Ranked by how much money they lit on fire. Let's give them a hand. 👏 Slowly.</p>
-      {board(shame, 'hot', 'Nobody. Which is frankly suspicious.')}</div>
+    <div class="panel"><h2>🔥 Wall of Shame</h2><p class="sub">Ranked by how much money they lit on fire. Let's give these dumbasses a hand. 👏 Slowly.</p>
+      {board(shame, "hot", "Nobody. Which is suspicious as hell.")}</div>
     <div class="panel"><h2>🏆 Savings Heroes</h2><p class="sub">People who actually fixed their shit. Rarer than a quiet on-call week.</p>
-      {board(heroes, 'good', '🦗 Crickets. Not one of you has fixed a damn thing. Shocking. Truly.')}</div>
+      {board(heroes, "good", "🦗 Crickets. Not one of you has fixed a single goddamn thing. Shocking. Truly.")}</div>
   </section>
 
-  <section class="panel hate"><h2>💌 Hate Mail</h2><p class="sub">Unsolicited feedback, delivered with love. Not really.</p>
+  <section class="panel hate"><h2>💌 Hate Mail</h2><p class="sub">Unsolicited feedback, delivered with love. Just kidding, fuck your feelings.</p>
     <ul>{hate_mail}</ul></section>
 
-  <h2 class="section-title">The Evidence <small>{plural(len(findings), 'exhibit')} of pure negligence, worst first</small></h2>
+  <h2 class="section-title">The Evidence <small>{plural(len(findings), "exhibit")} of half-assed negligence, worst first</small></h2>
   <section class="cards">{cards or clean}</section>
-  {f'<ul class="errors">{errors}</ul>' if errors else ''}
+  {f'<ul class="errors">{errors}</ul>' if errors else ""}
 
-  <footer>Prices are pay-as-you-go list estimates, not invoice amounts. Your dignity was not priced; it was already worth $0.
+  <footer>Prices are pay-as-you-go list estimates, not invoice amounts. Your dignity was not priced; it was already worth jack shit.
     Generated read-only: RoastBot judges, it doesn't clean up your mess. Complaints go to /dev/null.</footer>
 </main></body></html>"""
 

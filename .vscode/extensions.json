@@ -1,0 +1,10 @@
+{
+  "recommendations": [
+    "ms-python.python",
+    "ms-python.vscode-pylance",
+    "charliermarsh.ruff",
+    "anthropic.claude-code",
+    "ms-vscode.azurecli",
+    "editorconfig.editorconfig"
+  ]
+}

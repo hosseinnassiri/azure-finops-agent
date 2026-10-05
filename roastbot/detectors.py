@@ -3,6 +3,7 @@
 To add a detector: write a function taking (subscriptions, settings) and returning
 list[Finding], then add it to DETECTORS at the bottom.
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -60,41 +61,51 @@ def make(row: dict, detector: str, **kwargs) -> Finding:
 
 
 def unattached_disks(subscriptions, settings) -> list[Finding]:
-    rows = cloud.resource_graph(f"""
+    rows = cloud.resource_graph(
+        f"""
         Resources
         | where type =~ 'microsoft.compute/disks'
         | where properties.diskState =~ 'Unattached'
         | project {COMMON}, skuName = tostring(sku.name), sizeGb = toint(properties.diskSizeGB),
                   created = tostring(properties.timeCreated)
-    """, subscriptions)
+    """,
+        subscriptions,
+    )
     findings = []
     for r in rows:
         cost, tier = pricing.disk_monthly(r["skuName"], r["sizeGb"] or 0)
-        findings.append(make(
-            r, "unattached_disk",
-            title="Unattached managed disk",
-            sku=f"{r['skuName']} {r['sizeGb']} GiB ({tier})",
-            monthly_cost_usd=cost,
-            cost_basis="list price for the provisioned disk tier",
-            fix_summary="Snapshot it if the data matters, then delete the disk.",
-            fix_command=f"az disk delete --ids {r['id']} --yes",
-            evidence={"disk_state": "Unattached", "created": r["created"]},
-        ))
+        findings.append(
+            make(
+                r,
+                "unattached_disk",
+                title="Unattached managed disk",
+                sku=f"{r['skuName']} {r['sizeGb']} GiB ({tier})",
+                monthly_cost_usd=cost,
+                cost_basis="list price for the provisioned disk tier",
+                fix_summary="Snapshot it if the data matters, then delete the disk.",
+                fix_command=f"az disk delete --ids {r['id']} --yes",
+                evidence={"disk_state": "Unattached", "created": r["created"]},
+            )
+        )
     return findings
 
 
 def orphaned_public_ips(subscriptions, settings) -> list[Finding]:
-    rows = cloud.resource_graph(f"""
+    rows = cloud.resource_graph(
+        f"""
         Resources
         | where type =~ 'microsoft.network/publicipaddresses'
         | where isnull(properties.ipConfiguration) and isnull(properties.natGateway)
         | project {COMMON}, skuName = tostring(sku.name),
                   allocation = tostring(properties.publicIPAllocationMethod),
                   ip = tostring(properties.ipAddress)
-    """, subscriptions)
+    """,
+        subscriptions,
+    )
     return [
         make(
-            r, "orphaned_public_ip",
+            r,
+            "orphaned_public_ip",
             title="Public IP attached to nothing",
             sku=f"{r['skuName']} / {r['allocation']}",
             monthly_cost_usd=pricing.public_ip_monthly(r["skuName"], r["allocation"]),
@@ -121,7 +132,8 @@ def stopped_vms(subscriptions, settings) -> list[Finding]:
     rows = cloud.resource_graph(VM_QUERY.format(power="PowerState/stopped"), subscriptions)
     return [
         make(
-            r, "stopped_not_deallocated_vm",
+            r,
+            "stopped_not_deallocated_vm",
             title="VM stopped but not deallocated (compute still billing)",
             sku=r["vmSize"],
             monthly_cost_usd=pricing.vm_monthly(r["vmSize"], r["location"], r["osType"]),
@@ -139,7 +151,8 @@ def running_vms(subscriptions, settings) -> list[Finding]:
     rows = cloud.resource_graph(VM_QUERY.format(power="PowerState/running"), subscriptions)
     return [
         make(
-            r, "running_vm_unverified",
+            r,
+            "running_vm_unverified",
             title="Running VM (CPU not yet checked)",
             sku=r["vmSize"],
             monthly_cost_usd=pricing.vm_monthly(r["vmSize"], r["location"], r["osType"]),
@@ -153,21 +166,26 @@ def running_vms(subscriptions, settings) -> list[Finding]:
 
 
 def empty_app_service_plans(subscriptions, settings) -> list[Finding]:
-    rows = cloud.resource_graph(f"""
+    rows = cloud.resource_graph(
+        f"""
         Resources
         | where type =~ 'microsoft.web/serverfarms'
         | where toint(properties.numberOfSites) == 0
         | where tostring(sku.tier) !in~ ('Free', 'Shared', 'Dynamic', 'FlexConsumption')
         | project {COMMON}, skuName = tostring(sku.name), tier = tostring(sku.tier),
                   workers = toint(sku.capacity), isLinux = tobool(properties.reserved)
-    """, subscriptions)
+    """,
+        subscriptions,
+    )
     return [
         make(
-            r, "empty_app_service_plan",
+            r,
+            "empty_app_service_plan",
             title="App Service plan hosting zero apps",
             sku=f"{r['skuName']} x{r['workers'] or 1} ({'Linux' if r['isLinux'] else 'Windows'})",
             monthly_cost_usd=pricing.app_service_plan_monthly(
-                r["skuName"], r["location"], bool(r["isLinux"]), r["workers"] or 1),
+                r["skuName"], r["location"], bool(r["isLinux"]), r["workers"] or 1
+            ),
             cost_basis="pay-as-you-go list price x worker count",
             fix_summary="Delete the plan. An empty plan bills exactly like a busy one.",
             fix_command=f"az appservice plan delete --ids {r['id']} --yes",
@@ -178,16 +196,20 @@ def empty_app_service_plans(subscriptions, settings) -> list[Finding]:
 
 
 def orphaned_nics(subscriptions, settings) -> list[Finding]:
-    rows = cloud.resource_graph(f"""
+    rows = cloud.resource_graph(
+        f"""
         Resources
         | where type =~ 'microsoft.network/networkinterfaces'
         | where isnull(properties.virtualMachine) and isnull(properties.privateEndpoint)
               and isnull(properties.privateLinkService)
         | project {COMMON}, privateIp = tostring(properties.ipConfigurations[0].properties.privateIPAddress)
-    """, subscriptions)
+    """,
+        subscriptions,
+    )
     return [
         make(
-            r, "orphaned_nic",
+            r,
+            "orphaned_nic",
             title="Network interface with no VM",
             sku="n/a",
             monthly_cost_usd=0.0,
@@ -201,17 +223,21 @@ def orphaned_nics(subscriptions, settings) -> list[Finding]:
 
 
 def old_snapshots(subscriptions, settings) -> list[Finding]:
-    rows = cloud.resource_graph(f"""
+    rows = cloud.resource_graph(
+        f"""
         Resources
         | where type =~ 'microsoft.compute/snapshots'
         | extend created = todatetime(properties.timeCreated)
-        | where created < ago({int(settings['snapshot_age_days'])}d)
+        | where created < ago({int(settings["snapshot_age_days"])}d)
         | project {COMMON}, skuName = tostring(sku.name), sizeGb = toint(properties.diskSizeGB),
                   created = tostring(created)
-    """, subscriptions)
+    """,
+        subscriptions,
+    )
     return [
         make(
-            r, "old_snapshot",
+            r,
+            "old_snapshot",
             title=f"Snapshot older than {settings['snapshot_age_days']} days",
             sku=f"{r['skuName']} {r['sizeGb']} GiB",
             monthly_cost_usd=pricing.snapshot_monthly(r["skuName"], r["sizeGb"] or 0),

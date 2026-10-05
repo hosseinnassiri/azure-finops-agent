@@ -1,0 +1,39 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(uv sync:*)",
+      "Bash(uv run pytest:*)",
+      "Bash(uv run ruff:*)",
+      "Bash(uv run roastbot scan:*)",
+      "Bash(uv run roastbot report:*)",
+      "Bash(uv run roastbot --help:*)",
+      "Bash(az account show:*)",
+      "Bash(az resource list:*)",
+      "Bash(az resource show:*)",
+      "Bash(az vm list:*)",
+      "Bash(az vm show:*)",
+      "Bash(az vm get-instance-view:*)",
+      "mcp__azure"
+    ],
+    "ask": [
+      "Bash(uv run roastbot roast:*)",
+      "Bash(uv run roastbot demo:*)",
+      "Bash(uv add:*)",
+      "Bash(az group delete:*)",
+      "Bash(az disk delete:*)",
+      "Bash(az vm delete:*)",
+      "Bash(az vm deallocate:*)",
+      "Bash(az network public-ip delete:*)",
+      "Bash(az network nic delete:*)",
+      "Bash(az snapshot delete:*)",
+      "Bash(git push:*)"
+    ],
+    "deny": [
+      "Read(./.env)",
+      "Read(./.env.*)"
+    ]
+  },
+  "enabledMcpjsonServers": [
+    "azure"
+  ]
+}

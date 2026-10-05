@@ -1,0 +1,50 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "roastbot: roast --demo",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "roastbot.cli",
+      "args": [
+        "roast",
+        "--demo"
+      ],
+      "console": "integratedTerminal",
+      "justMyCode": true
+    },
+    {
+      "name": "roastbot: scan --demo (no LLM)",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "roastbot.cli",
+      "args": [
+        "scan",
+        "--demo",
+        "--no-open"
+      ],
+      "console": "integratedTerminal",
+      "justMyCode": true
+    },
+    {
+      "name": "roastbot: report --open",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "roastbot.cli",
+      "args": [
+        "report",
+        "--open"
+      ],
+      "console": "integratedTerminal",
+      "justMyCode": true
+    },
+    {
+      "name": "pytest",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "pytest",
+      "console": "integratedTerminal",
+      "justMyCode": false
+    }
+  ]
+}

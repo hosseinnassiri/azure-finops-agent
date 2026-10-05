@@ -26,3 +26,11 @@ It's a contest and demo project, and the first slice of a broader infrastructure
 
 - Use uv: `uv sync`, `uv run roastbot ...`, `uv add <pkg>`. No pip, no requirements.txt.
 - `uv run roastbot scan --demo --no-open` is the quick no-LLM check that the Azure side works.
+- Before finishing a change: `uv run ruff check . && uv run ruff format . && uv run pytest -q` (CI runs the same).
+- Tests cover logic that needs no Azure (verdicts, redaction, leaderboards, pricing). Don't add tests that hit Azure.
+
+## Tooling notes
+- `.mcp.json` gives Claude Code sessions in this repo the same read-only Azure MCP server the agent uses.
+- Azure MCP is pinned (`msmcp-azure==2.0.5`) in both `roastbot/agent.py` and `.mcp.json`. Bump them together.
+- The demo subscription has zero App Service quota, and East US often lacks capacity for small VM sizes.
+  `demo plant` defaults to canadacentral and falls back through `VM_SIZES`.

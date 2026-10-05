@@ -4,6 +4,7 @@ Azure MCP Server has no Resource Graph tool, so the subscription-wide sweep for
 orphaned resources lives here. Everything else (VM state, CPU metrics, activity log,
 pricing, Advisor) the agent does through Azure MCP. Nothing here mutates Azure.
 """
+
 from __future__ import annotations
 
 from functools import lru_cache

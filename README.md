@@ -43,6 +43,17 @@ claude             # once, if Claude Code isn't logged in yet. The agent reuses 
 
 Add `--model <id>` before the subcommand to pick a Claude model (default: your Claude Code default).
 
+## Development
+```powershell
+uv sync                                   # includes dev tools (ruff, pytest)
+uv run pytest -q                          # unit tests, no Azure needed
+uv run ruff check . ; uv run ruff format .
+```
+VS Code: open the folder and accept the recommended extensions. The interpreter (`.venv`), ruff format-on-save,
+pytest discovery and debug configurations (`roast --demo`, `scan --demo`, `report`) are preconfigured. Claude Code:
+`.claude/settings.json` pre-approves safe commands and asks before anything destructive, and `.mcp.json` attaches
+a read-only Azure MCP server. CI (`.github/workflows/ci.yml`) runs lint, format check and tests.
+
 ## Live demo
 1. The evening before: `uv run roastbot demo plant` (sandbox subscription, ~$0.30/h). It plants a disk, IPs, NICs,
    a stopped VM, an idle VM and a snapshot. There's no App Service plan, because the demo subscription has no quota for one.
@@ -55,7 +66,7 @@ Add `--model <id>` before the subcommand to pick a Claude model (default: your C
 - The persona is unfiltered: full profanity, owners named and shamed. Its only floor is no slurs, no attacks
   on protected traits (race, gender, religion, disability and so on) and no threats. Check your audience before
   putting it on a big screen. Tune `PERSONA` in `roastbot/agent.py`.
-- `AZMCP_VERSION` in `roastbot/agent.py` floats to the latest Azure MCP. Pin it before relying on tool names.
+- Azure MCP is pinned to `msmcp-azure==2.0.5` (`roastbot/agent.py` and `.mcp.json`). Tool names change between releases.
 
 ## Roadmap
 Teams Adaptive Card output · daily schedule under a Reader managed identity · Cost Management actuals ·

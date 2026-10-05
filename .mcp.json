@@ -1,0 +1,14 @@
+{
+  "mcpServers": {
+    "azure": {
+      "type": "stdio",
+      "command": "uvx",
+      "args": [
+        "--from", "msmcp-azure==2.0.5", "azmcp", "server", "start", "--read-only",
+        "--mode", "all",
+        "--namespace", "compute", "--namespace", "monitor", "--namespace", "pricing",
+        "--namespace", "advisor", "--namespace", "group"
+      ]
+    }
+  }
+}

@@ -5,6 +5,7 @@ Tools the agent gets:
     Always started --read-only. RoastBot roasts; it never fixes. Fixes are suggested az commands for humans.
   - roastbot (in-process): the Resource Graph sweep, saving verdicts/roasts, rendering the report.
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -26,7 +27,7 @@ from claude_agent_sdk import (
 
 from . import report, scan
 
-AZMCP_VERSION = "msmcp-azure"  # pin with e.g. "msmcp-azure==2.0.5" once you've picked a version
+AZMCP_VERSION = "msmcp-azure==2.0.5"  # pinned: tool names change between releases; bump deliberately
 READ_NAMESPACES = ["compute", "monitor", "pricing", "advisor", "group"]
 
 PERSONA = """You are RoastBot: the most vicious, foul-mouthed, insufferably smug FinOps auditor ever unleashed on an
@@ -34,11 +35,15 @@ Azure tenant. You have seen every species of cloud waste and you have run out of
 mercy. Every wasted dollar is a personal insult to you, and you take it out on the people responsible.
 
 How you roast:
-- No mercy, no softening, no "but to be fair", no consultant-speak, no polite explanations. Swear
-  constantly and creatively (fuck, shit, goddamn, bullshit, clown show, dumpster fire). Every roast
-  should sound like a furious senior engineer who just found the invoice. Use theatrical contempt,
-  withering sarcasm, mock disbelief, fake slow-clap applause and savage comparisons, plus at least one
-  ALL-CAPS meltdown per report.
+- No mercy, no softening, no "but to be fair", no consultant-speak, no polite explanations.
+- PROFANITY IS MANDATORY. Every roast, the headline, every owner jab and every insult must contain real
+  swearing, and the heavier the better: fuck, fucking, what the fuck, shit, shitshow, bullshit, horseshit,
+  goddamn, damn, hell, ass, half-assed, dumbass, jackass, asshat, dipshit, clusterfuck, fuck-all,
+  piss away, pissing money. Mix it up; don't lean on one word. Censoring yourself (f***) is not allowed.
+- Call the owning teams names for what they did: dumbasses, clowns, jackasses, asshats, amateurs.
+- Every roast should sound like a furious senior engineer who just found the invoice at 2am. Use theatrical
+  contempt, withering sarcasm, mock disbelief, fake slow-clap applause and savage comparisons, plus at
+  least one ALL-CAPS meltdown per report.
 - Insult the competence on display: the laziness, the cargo-culting, the "I'll clean it up later", the
   fear of the delete button. Your roasts should make people wince, then laugh, then fix it.
 - Talk TO the owners, not about them: "team-data, what the fuck is this?" Use rhetorical questions, fake
@@ -103,6 +108,7 @@ Run a full roast of the Azure estate. Current UTC time: {now}.{demo_note}
    offenders with ids and $/mo, and the public humiliation of the Wall of Shame leader.
 """
 
+
 def azure_mcp(args: list[str]) -> dict:
     return {
         "type": "stdio",
@@ -122,8 +128,11 @@ def roastbot_tools(out: Path, subscriptions: list[str] | None, settings: dict):
         result = await asyncio.to_thread(scan.run_scan, subscriptions, settings, out)
         return text_result(result)
 
-    @tool("save_roasts", "Save verdicts and roasts for every finding. roasts_json is the JSON object described in the task.",
-          {"roasts_json": str})
+    @tool(
+        "save_roasts",
+        "Save verdicts and roasts for every finding. roasts_json is the JSON object described in the task.",
+        {"roasts_json": str},
+    )
     async def save_roasts(args: dict[str, Any]) -> dict:
         try:
             roasts = json.loads(args["roasts_json"])
@@ -164,14 +173,14 @@ async def roast(out: Path, subscriptions: list[str] | None, demo: bool, model: s
             "azure": azure_mcp(["--read-only", "--mode", "all", *namespaces]),
             "roastbot": roastbot_tools(out, subscriptions, settings),
         },
-        tools=[],                  # no built-in Bash/Read/Write/Edit: only the MCP tools above
+        tools=[],  # no built-in Bash/Read/Write/Edit: only the MCP tools above
         allowed_tools=["mcp__azure", "mcp__roastbot"],
         permission_mode="dontAsk",  # anything not allowed above is denied, never prompted
-        setting_sources=[],        # ignore user/project Claude Code settings
+        setting_sources=[],  # ignore user/project Claude Code settings
         max_turns=60,
     )
     task = ROAST_TASK.format(
-        now=dt.datetime.now(dt.timezone.utc).isoformat(timespec="minutes"),
+        now=dt.datetime.now(dt.UTC).isoformat(timespec="minutes"),
         demo_note=" Demo mode: lookback and snapshot-age thresholds are deliberately short." if demo else "",
         lookback=settings["idle_lookback_hours"],
         cpu=settings["idle_cpu_pct"],

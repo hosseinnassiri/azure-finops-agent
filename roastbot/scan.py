@@ -1,4 +1,5 @@
 """Deterministic Resource Graph sweep -> out/findings.json. No LLM involved."""
+
 from __future__ import annotations
 
 import datetime as dt
@@ -30,7 +31,7 @@ def run_scan(subscriptions: list[str] | None, settings: dict, out: Path) -> dict
 
     findings.sort(key=lambda f: f.monthly_cost_usd or 0, reverse=True)
     result = {
-        "scanned_at": dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds"),
+        "scanned_at": dt.datetime.now(dt.UTC).isoformat(timespec="seconds"),
         "scope": subscriptions or "all accessible subscriptions",
         "settings": settings,
         "findings": [asdict(f) for f in findings],
