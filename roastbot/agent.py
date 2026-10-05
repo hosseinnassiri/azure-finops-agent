@@ -75,6 +75,7 @@ waste, the decisions and the teams is fair game.
 
 ROAST_TASK = """\
 Run a full roast of the Azure estate. Current UTC time: {now}.{demo_note}
+Scope: {scope}
 
 1. Call mcp__roastbot__scan_for_waste. It does a Resource Graph sweep and returns candidates.
 2. Verify and gather ammunition with the Azure MCP tools (read-only). Make independent calls in parallel.
@@ -122,7 +123,17 @@ def text_result(payload: Any) -> dict:
 	return {"content": [{"type": "text", "text": text}]}
 
 
-def roastbot_tools(out: Path, subscriptions: list[str] | None, settings: dict):
+def scope_note(subscriptions: list[dict] | None) -> str:
+	if not subscriptions:
+		return "every subscription this identity can read."
+	listed = ", ".join(f"{s['name']} ({s['id']})" for s in subscriptions)
+	return (
+		f"only {listed}. Pass the subscription ID to every Azure MCP call, and never query or roast "
+		"anything outside this scope."
+	)
+
+
+def roastbot_tools(out: Path, subscriptions: list[dict] | None, settings: dict):
 	@tool("scan_for_waste", "Sweep Azure Resource Graph for waste candidates. Takes no arguments.", {})
 	async def scan_for_waste(args: dict[str, Any]) -> dict:
 		result = await asyncio.to_thread(scan.run_scan, subscriptions, settings, out)
@@ -163,7 +174,8 @@ async def stream(prompt: str, options: ClaudeAgentOptions) -> None:
 			print(f"\n[agent stopped: {message.subtype}]")
 
 
-async def roast(out: Path, subscriptions: list[str] | None, demo: bool, model: str | None) -> None:
+async def roast(out: Path, subscriptions: list[dict] | None, demo: bool, model: str | None) -> None:
+	"""subscriptions: resolved [{"id", "name"}] from cloud.resolve_subscriptions, or None for everything readable."""
 	settings = scan.settings_for(demo)
 	namespaces = [arg for n in READ_NAMESPACES for arg in ("--namespace", n)]
 	options = ClaudeAgentOptions(
@@ -182,6 +194,7 @@ async def roast(out: Path, subscriptions: list[str] | None, demo: bool, model: s
 	task = ROAST_TASK.format(
 		now=dt.datetime.now(dt.UTC).isoformat(timespec="minutes"),
 		demo_note=" Demo mode: lookback and snapshot-age thresholds are deliberately short." if demo else "",
+		scope=scope_note(subscriptions),
 		lookback=settings["idle_lookback_hours"],
 		cpu=settings["idle_cpu_pct"],
 	)

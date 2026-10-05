@@ -363,7 +363,7 @@ def render(scan: dict, findings: list[dict], roasts: dict, saved: dict[str, floa
   <header class="masthead">
     <div>
       <h1 class="logo">The Daily <span>Burn</span></h1>
-      <div class="dateline">Your cloud bill's worst fucking nightmare · Read it and weep · {escape(scanned)} UTC · {escape(str(scan["scope"]))}</div>
+      <div class="dateline">Your cloud bill's worst fucking nightmare · Read it and weep · {escape(scanned)} UTC · {escape(str(scan.get("scope_label", scan["scope"])))}</div>
     </div>
     <div class="index"><small>Dumpster Fire Index</small><div class="flames">{flame_icons}</div><b>{severity}</b></div>
   </header>

@@ -18,11 +18,19 @@ def settings_for(demo: bool) -> dict:
 	return dict(DEMO if demo else DEFAULTS)
 
 
-def run_scan(subscriptions: list[str] | None, settings: dict, out: Path) -> dict:
+def scope_label(subscriptions: list[dict] | None) -> str:
+	if not subscriptions:
+		return "all accessible subscriptions"
+	return ", ".join(s["name"] for s in subscriptions)
+
+
+def run_scan(subscriptions: list[dict] | None, settings: dict, out: Path) -> dict:
+	"""subscriptions: resolved [{"id", "name"}] from cloud.resolve_subscriptions, or None for everything readable."""
+	ids = [s["id"] for s in subscriptions] if subscriptions else None
 	findings, errors = [], []
 	for detect in DETECTORS:
 		try:
-			found = detect(subscriptions, settings)
+			found = detect(ids, settings)
 			print(f"  {detect.__name__:<26} {len(found):>3} candidate(s)", file=sys.stderr)
 			findings.extend(found)
 		except Exception as exc:
@@ -32,7 +40,8 @@ def run_scan(subscriptions: list[str] | None, settings: dict, out: Path) -> dict
 	findings.sort(key=lambda f: f.monthly_cost_usd or 0, reverse=True)
 	result = {
 		"scanned_at": dt.datetime.now(dt.UTC).isoformat(timespec="seconds"),
-		"scope": subscriptions or "all accessible subscriptions",
+		"scope": ids or "all accessible subscriptions",
+		"scope_label": scope_label(subscriptions),
 		"settings": settings,
 		"findings": [asdict(f) for f in findings],
 		"errors": errors,
