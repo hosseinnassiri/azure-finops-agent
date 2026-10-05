@@ -1,6 +1,7 @@
 """The Roast Bot agent: Claude (via the Claude Agent SDK, i.e. your Claude Code login) + Azure MCP Server.
 
-Tools the agent gets:
+With --provider openai the same persona, task and tools run on any OpenAI-compatible model instead
+(see openai_agent.py). Tools the agent gets, on either engine:
   - azure (Azure MCP Server, via uvx): VM/disk state, CPU metrics, activity log, pricing, Advisor.
     Always started --read-only. RoastBot roasts; it never fixes. Fixes are suggested az commands for humans.
   - roastbot (in-process): the Resource Graph sweep, saving verdicts/roasts, rendering the report.
@@ -118,9 +119,18 @@ def azure_mcp(args: list[str]) -> dict:
 	}
 
 
-def text_result(payload: Any) -> dict:
-	text = payload if isinstance(payload, str) else json.dumps(payload, indent=1)
-	return {"content": [{"type": "text", "text": text}]}
+def azure_mcp_server() -> dict:
+	"""The Azure MCP server both engines use. Always read-only."""
+	namespaces = [arg for n in READ_NAMESPACES for arg in ("--namespace", n)]
+	return azure_mcp(["--read-only", "--mode", "all", *namespaces])
+
+
+class ProviderError(RuntimeError):
+	"""The chosen model provider can't be used (missing extra, key or endpoint)."""
+
+
+def as_text(payload: Any) -> str:
+	return payload if isinstance(payload, str) else json.dumps(payload, indent=1)
 
 
 def scope_note(subscriptions: list[dict] | None) -> str:
@@ -137,43 +147,82 @@ GUARD_NOTE = """
    save_roasts runs a content check. If it returns flagged lines, rewrite only those (just as savage, minus
    the flagged part) and call save_roasts again with the full object."""
 
-
-def roastbot_tools(out: Path, subscriptions: list[dict] | None, settings: dict, use_guard: bool):
-	rewrites = {"rounds": 0, "lines": 0}  # content-check lines sent back to Claude so far
-
-	@tool("scan_for_waste", "Sweep Azure Resource Graph for waste candidates. Takes no arguments.", {})
-	async def scan_for_waste(args: dict[str, Any]) -> dict:
-		result = await asyncio.to_thread(scan.run_scan, subscriptions, settings, out)
-		return text_result(result)
-
-	@tool(
-		"save_roasts",
+NO_ARGS = {"type": "object", "properties": {}}
+# The in-process tools: name -> (description, JSON schema). Both engines expose exactly these.
+ROASTBOT_TOOLS = {
+	"scan_for_waste": ("Sweep Azure Resource Graph for waste candidates. Takes no arguments.", NO_ARGS),
+	"save_roasts": (
 		"Save verdicts and roasts for every finding. roasts_json is the JSON object described in the task.",
-		{"roasts_json": str},
-	)
-	async def save_roasts(args: dict[str, Any]) -> dict:
+		{"type": "object", "properties": {"roasts_json": {"type": "string"}}, "required": ["roasts_json"]},
+	),
+	"render_report": ("Render the HTML report from the saved scan and roasts. Takes no arguments.", NO_ARGS),
+}
+
+
+class RoastTools:
+	"""The in-process tools, shared by both engines. Each takes the tool's args and returns (text, is_error)."""
+
+	def __init__(self, out: Path, subscriptions: list[dict] | None, settings: dict, use_guard: bool):
+		self.out, self.subscriptions, self.settings, self.use_guard = out, subscriptions, settings, use_guard
+		self.rewrites = {"rounds": 0, "lines": 0}  # content-check lines sent back to the model so far
+
+	async def call(self, name: str, args: dict[str, Any]) -> tuple[str, bool]:
+		if name not in ROASTBOT_TOOLS:
+			return f"No tool named {name!r}.", True
+		return await getattr(self, name)(args)
+
+	async def scan_for_waste(self, args: dict[str, Any]) -> tuple[str, bool]:
+		result = await asyncio.to_thread(scan.run_scan, self.subscriptions, self.settings, self.out)
+		return as_text(result), False
+
+	async def save_roasts(self, args: dict[str, Any]) -> tuple[str, bool]:
 		try:
 			roasts = json.loads(args["roasts_json"])
-		except json.JSONDecodeError as exc:
-			return {**text_result(f"Invalid JSON: {exc}. Fix it and call again."), "is_error": True}
-		known = {f["id"] for f in json.loads((out / "findings.json").read_text(encoding="utf-8"))["findings"]}
+		except (KeyError, TypeError, json.JSONDecodeError) as exc:
+			return f"Invalid roasts_json: {exc}. Fix it and call again.", True
+		known = {f["id"] for f in json.loads((self.out / "findings.json").read_text(encoding="utf-8"))["findings"]}
 		missing = known - set(roasts.get("findings", {}))
-		if use_guard:
-			roasts["guard"] = {**await guard.check(roasts), "rewrites": rewrites["lines"]}
-		(out / "roasts.json").write_text(json.dumps(roasts, indent=2, ensure_ascii=False), encoding="utf-8")
+		if self.use_guard:
+			roasts["guard"] = {**await guard.check(roasts), "rewrites": self.rewrites["lines"]}
+		(self.out / "roasts.json").write_text(json.dumps(roasts, indent=2, ensure_ascii=False), encoding="utf-8")
 		flags = roasts.get("guard", {}).get("flags", [])
-		if flags and rewrites["rounds"] < guard.MAX_REWRITES:
-			rewrites["rounds"] += 1
-			rewrites["lines"] += len(flags)
-			return text_result(guard.feedback(roasts["guard"]))
-		return text_result(f"Saved. Findings without a verdict: {sorted(missing) or 'none'}")
+		if flags and self.rewrites["rounds"] < guard.MAX_REWRITES:
+			self.rewrites["rounds"] += 1
+			self.rewrites["lines"] += len(flags)
+			return guard.feedback(roasts["guard"]), False
+		return f"Saved. Findings without a verdict: {sorted(missing) or 'none'}", False
 
-	@tool("render_report", "Render the HTML report from the saved scan and roasts. Takes no arguments.", {})
-	async def render_report(args: dict[str, Any]) -> dict:
-		path = await asyncio.to_thread(report.finalize, out)
-		return text_result(f"Report written to {path}")
+	async def render_report(self, args: dict[str, Any]) -> tuple[str, bool]:
+		path = await asyncio.to_thread(report.finalize, self.out)
+		return f"Report written to {path}", False
 
-	return create_sdk_mcp_server(name="roastbot", version="0.2.0", tools=[scan_for_waste, save_roasts, render_report])
+
+def claude_tools(tools: RoastTools):
+	"""RoastTools as an in-process MCP server for the Claude Agent SDK."""
+
+	def wrap(name: str):
+		description, schema = ROASTBOT_TOOLS[name]
+
+		@tool(name, description, schema)
+		async def handler(args: dict[str, Any]) -> dict:
+			text, is_error = await tools.call(name, args)
+			result = {"content": [{"type": "text", "text": text}]}
+			return {**result, "is_error": True} if is_error else result
+
+		return handler
+
+	return create_sdk_mcp_server(name="roastbot", version="0.2.0", tools=[wrap(name) for name in ROASTBOT_TOOLS])
+
+
+def task_prompt(subscriptions: list[dict] | None, demo: bool, use_guard: bool, settings: dict) -> str:
+	return ROAST_TASK.format(
+		now=dt.datetime.now(dt.UTC).isoformat(timespec="minutes"),
+		demo_note=" Demo mode: lookback and snapshot-age thresholds are deliberately short." if demo else "",
+		scope=scope_note(subscriptions),
+		guard_note=GUARD_NOTE if use_guard else "",
+		lookback=settings["idle_lookback_hours"],
+		cpu=settings["idle_cpu_pct"],
+	)
 
 
 async def stream(prompt: str, options: ClaudeAgentOptions) -> None:
@@ -188,29 +237,34 @@ async def stream(prompt: str, options: ClaudeAgentOptions) -> None:
 			print(f"\n[agent stopped: {message.subtype}]")
 
 
-async def roast(out: Path, subscriptions: list[dict] | None, demo: bool, model: str | None, use_guard: bool) -> None:
+async def roast(
+	out: Path,
+	subscriptions: list[dict] | None,
+	demo: bool,
+	model: str | None,
+	use_guard: bool,
+	provider: str = "claude",
+) -> None:
 	"""subscriptions: resolved [{"id", "name"}] from cloud.resolve_subscriptions, or None for everything readable."""
 	settings = scan.settings_for(demo)
-	namespaces = [arg for n in READ_NAMESPACES for arg in ("--namespace", n)]
+	tools = RoastTools(out, subscriptions, settings, use_guard)
+	task = task_prompt(subscriptions, demo, use_guard, settings)
+	if provider == "openai":
+		try:
+			from . import openai_agent
+		except ImportError as exc:
+			raise ProviderError(f"{exc}. Install the extra: `uv sync --extra openai`") from exc
+		await openai_agent.roast(task, tools, model)
+		return
+
 	options = ClaudeAgentOptions(
 		system_prompt=PERSONA,
 		model=model,
-		mcp_servers={
-			"azure": azure_mcp(["--read-only", "--mode", "all", *namespaces]),
-			"roastbot": roastbot_tools(out, subscriptions, settings, use_guard),
-		},
+		mcp_servers={"azure": azure_mcp_server(), "roastbot": claude_tools(tools)},
 		tools=[],  # no built-in Bash/Read/Write/Edit: only the MCP tools above
 		allowed_tools=["mcp__azure", "mcp__roastbot"],
 		permission_mode="dontAsk",  # anything not allowed above is denied, never prompted
 		setting_sources=[],  # ignore user/project Claude Code settings
 		max_turns=60,
-	)
-	task = ROAST_TASK.format(
-		now=dt.datetime.now(dt.UTC).isoformat(timespec="minutes"),
-		demo_note=" Demo mode: lookback and snapshot-age thresholds are deliberately short." if demo else "",
-		scope=scope_note(subscriptions),
-		guard_note=GUARD_NOTE if use_guard else "",
-		lookback=settings["idle_lookback_hours"],
-		cpu=settings["idle_cpu_pct"],
 	)
 	await stream(task, options)

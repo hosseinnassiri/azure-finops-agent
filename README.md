@@ -52,6 +52,27 @@ Add `--model <id>` before the subcommand to pick a Claude model (default: your C
 `--subscription` only sees subscriptions in your current `az` tenant. For one in another tenant, run
 `az account set --subscription <id>` first. An unknown or ambiguous name fails fast instead of roasting an empty estate.
 
+### Using a non-Claude model
+
+`--provider openai` runs the same agent (same persona, same read-only Azure MCP tools) on any model behind an
+OpenAI-compatible Chat Completions endpoint. It's configured with the `openai` SDK's own environment variables.
+Azure OpenAI / Foundry signs in with Entra ID through `az login`, so you don't need a key:
+
+```powershell
+uv sync --extra openai
+$env:OPENAI_BASE_URL = "https://<resource>.openai.azure.com/openai/v1/"   # needs the Cognitive Services OpenAI User role
+az login
+uv run roastbot --provider openai --model <deployment-name> roast --demo
+```
+
+- **OpenAI:** set `OPENAI_API_KEY`, and leave `OPENAI_BASE_URL` unset.
+- **Ollama, LM Studio or vLLM:** set `OPENAI_BASE_URL=http://localhost:11434/v1` and `OPENAI_API_KEY=local`
+  (any non-empty value).
+- **Default provider:** set `ROASTBOT_PROVIDER=openai` to make it the default.
+
+Tool-calling quality varies by model. Small local models often fumble the multi-step task. If the model stops early,
+the report still renders, with house insults in the gaps.
+
 ## Development
 
 ```powershell
@@ -85,6 +106,8 @@ a read-only Azure MCP server. CI (`.github/workflows/ci.yml`) runs lint, format 
   replaced with a house insult. Setup: `uv sync --extra guard` and set `TYPESAFE_API_KEY`. It fails open: with
   no key or with the API down, the report is published with an UNCHECKED banner. Jev is in early access, and
   `THRESHOLD` in `roastbot/guard.py` hasn't been tuned on live roasts yet. TypeSafe says it doesn't train on user data.
+- With `--provider openai`, Azure OpenAI's content filter may block the profane persona, and some models refuse it.
+  RoastBot stops cleanly and renders what it has. Ask for a deployment with a looser filter, or tone down `PERSONA`.
 - Azure MCP is pinned to `msmcp-azure==2.0.5` (`roastbot/agent.py` and `.mcp.json`). Tool names change between releases.
 
 ## Roadmap

@@ -4,13 +4,18 @@ uv run roastbot roast [--demo] [--subscription ID|NAME] [--guard]  # the agent: 
 uv run roastbot scan [--demo] [--subscription ID|NAME]             # sweep only, no LLM
 uv run roastbot report [--open]                                    # re-render the report from saved files
 uv run roastbot demo plant | cleanup                               # plant / remove demo waste in a sandbox
+
+Global options go before the command: --provider openai --model <deployment> runs the agent on any
+OpenAI-compatible model (Azure OpenAI / Foundry, OpenAI, Ollama) instead of Claude.
 """
 
 from __future__ import annotations
 
 import argparse
 import asyncio
+import os
 import sys
+import time
 from pathlib import Path
 
 from . import agent, cloud, demo, guard, report, scan
@@ -21,7 +26,13 @@ def main(argv=None) -> int:
 		prog="roastbot", description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
 	)
 	parser.add_argument("--out", default="out", type=Path)
-	parser.add_argument("--model", help="Claude model id (default: your Claude Code default)")
+	parser.add_argument("--model", help="model id, or deployment name (default for claude: your Claude Code default)")
+	parser.add_argument(
+		"--provider",
+		choices=["claude", "openai"],
+		default=os.environ.get("ROASTBOT_PROVIDER", "claude"),
+		help="claude (Agent SDK) or openai (any OpenAI-compatible endpoint, set via OPENAI_BASE_URL)",
+	)
 	sub = parser.add_subparsers(dest="command", required=True)
 
 	for name in ("roast", "scan"):
@@ -47,6 +58,8 @@ def main(argv=None) -> int:
 	p.add_argument("--resource-group", default="rg-roastbot-demo")
 
 	args = parser.parse_args(argv)
+	if args.command == "roast" and args.provider == "openai" and not args.model:
+		parser.error("--provider openai needs --model: your model or deployment name")
 	out: Path = args.out
 	for stream in (sys.stdout, sys.stderr):  # Windows consoles default to cp1252; RoastBot needs its emoji
 		stream.reconfigure(encoding="utf-8", errors="replace")
@@ -62,9 +75,16 @@ def main(argv=None) -> int:
 	if args.command == "roast":
 		if args.guard and (reason := guard.unavailable_reason()):
 			print(f"Content check unavailable: {reason}. The report will be marked UNCHECKED.", file=sys.stderr)
-		asyncio.run(agent.roast(out, subscriptions, args.demo, args.model, args.guard))
-		if (out / "report.html").exists() and not args.no_open:
-			report.finalize(out, open_browser=True)
+		started = time.time()
+		try:
+			asyncio.run(agent.roast(out, subscriptions, args.demo, args.model, args.guard, args.provider))
+		except agent.ProviderError as exc:
+			print(f"roastbot: {exc}", file=sys.stderr)
+			return 2
+		# Render even if the model stopped early or skipped render_report; the house insults fill any gaps.
+		findings = out / "findings.json"
+		if findings.exists() and findings.stat().st_mtime >= started:
+			report.finalize(out, open_browser=not args.no_open)
 	elif args.command == "scan":
 		scan.print_summary(scan.run_scan(subscriptions, scan.settings_for(args.demo), out))
 		print(f"\nReport: {report.finalize(out, open_browser=not args.no_open)}")

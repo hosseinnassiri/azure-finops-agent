@@ -96,18 +96,15 @@ def test_save_roasts_sends_flags_back_twice_then_accepts(tmp_path, monkeypatch):
 
 	from roastbot import agent
 
-	captured = {}
-	monkeypatch.setattr(agent, "create_sdk_mcp_server", lambda **kw: captured.update(kw))
-
 	real_check = guard.check
 	monkeypatch.setattr(guard, "check", lambda roasts: real_check(roasts, FakeClient()))
 	(tmp_path / "findings.json").write_text(json.dumps({"findings": []}), encoding="utf-8")
-	agent.roastbot_tools(tmp_path, None, {}, use_guard=True)
-	save = next(t for t in captured["tools"] if t.name == "save_roasts")
+	tools = agent.RoastTools(tmp_path, None, {}, use_guard=True)
 
 	def call():
-		result = asyncio.run(save.handler({"roasts_json": json.dumps(roasts_with())}))
-		return result["content"][0]["text"]
+		text, is_error = asyncio.run(tools.save_roasts({"roasts_json": json.dumps(roasts_with())}))
+		assert not is_error
+		return text
 
 	assert call().startswith("Saved, but the content check flagged")
 	assert call().startswith("Saved, but the content check flagged")

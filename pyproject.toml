@@ -17,6 +17,9 @@ roastbot = "roastbot.cli:main"
 guard = [
     "typesafe-sdk>=0.7.2",
 ]
+openai = [
+    "openai>=3.24.0",
+]
 
 [build-system]
 requires = ["hatchling"]

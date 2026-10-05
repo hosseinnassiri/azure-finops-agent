@@ -10,19 +10,24 @@ It's a contest and demo project, and the first slice of a broader infrastructure
 - Python code in `roastbot/` never mutates Azure. The Resource Graph sweep is read-only.
 - The agent gets no built-in tools (`tools=[]`), `permission_mode="dontAsk"` denies anything not in
   `allowed_tools`, and it ignores Claude Code settings (`setting_sources=[]`).
+- The non-Claude engine (`openai_agent.py`, `--provider openai`) can only dispatch the tools it registers: the
+  Azure MCP tools (same `azure_mcp_server()`, so always `--read-only`) plus `RoastTools`. Unknown names get an error
+  result. Never add a shell, file or write tool to either engine.
 - In production this runs under a Reader-scoped managed identity (picked up by `DefaultAzureCredential`
   and Azure MCP). Locally it uses `az login`.
 
 ## Layout
 
 - `roastbot/agent.py`: persona, task prompt, Agent SDK options, in-process tools
-- `roastbot/cli.py`: `roastbot` entry point (roast / scan / report / demo)
+- `roastbot/cli.py`: `roastbot` entry point (roast / scan / report / demo; `--provider claude|openai`)
 - `roastbot/detectors.py`: Resource Graph detectors; register new ones in `DETECTORS`
 - `roastbot/cloud.py`: Resource Graph paging. `pricing.py`: list-price estimates
 - `roastbot/scan.py`: sweep → `out/findings.json`. `report.py`: verdicts + history → `out/report.html`
 - `roastbot/demo.py`: plant/cleanup demo waste via `az`
 - `roastbot/guard.py`: opt-in (`roast --guard`) Jev content check on the roasts. Fails open. `typesafe-sdk` is the
   optional `guard` extra, imported lazily, so `report.py` only uses the SDK-free `apply`
+- `roastbot/openai_agent.py`: the same agent on any OpenAI-compatible endpoint, with our own tool loop. `RoastTools` and
+  `ROASTBOT_TOOLS` in `agent.py` are shared by both engines. `openai` is the optional `openai` extra
 
 ## Commands
 
