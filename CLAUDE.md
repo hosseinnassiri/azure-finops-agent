@@ -21,13 +21,16 @@ It's a contest and demo project, and the first slice of a broader infrastructure
 - `roastbot/cloud.py`: Resource Graph paging. `pricing.py`: list-price estimates
 - `roastbot/scan.py`: sweep → `out/findings.json`. `report.py`: verdicts + history → `out/report.html`
 - `roastbot/demo.py`: plant/cleanup demo waste via `az`
+- `roastbot/guard.py`: opt-in (`roast --guard`) Jev content check on the roasts. Fails open. `typesafe-sdk` is the
+  optional `guard` extra, imported lazily, so `report.py` only uses the SDK-free `apply`
 
 ## Commands
 
 - Use uv: `uv sync`, `uv run roastbot ...`, `uv add <pkg>`. No pip, no requirements.txt.
 - `uv run roastbot scan --demo --no-open` is the quick no-LLM check that the Azure side works.
 - Before finishing a change: `uv run ruff check . && uv run ruff format . && uv run pytest -q` (CI runs the same).
-- Tests cover logic that needs no Azure (verdicts, redaction, leaderboards, pricing). Don't add tests that hit Azure.
+- Tests cover logic that needs no Azure (verdicts, redaction, leaderboards, pricing). Don't add tests that hit Azure,
+  or TypeSafe: guard tests use a fake client. CI installs all extras (`uv sync --locked --all-extras`).
 
 ## Tooling notes
 - `.mcp.json` gives Claude Code sessions in this repo the same read-only Azure MCP server the agent uses.

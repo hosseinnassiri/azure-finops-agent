@@ -41,6 +41,7 @@ claude             # once, if Claude Code isn't logged in yet. The agent reuses 
 | --- | --- |
 | `uv run roastbot roast` | Full agent run over every subscription you can read |
 | `uv run roastbot roast --subscription "Pay-As-You-Go"` | Roast one subscription, by name or ID. Repeat the flag for several. Works with `scan` too. |
+| `uv run roastbot roast --guard` | Content-check the roasts with [Jev](https://docs.typesafe.ai/) before they're published (see below) |
 | `uv run roastbot roast --demo` | Short thresholds (6 h CPU lookback, any-age snapshots) for freshly planted waste |
 | `uv run roastbot scan` | Sweep and report only. No LLM, canned insults. |
 | `uv run roastbot report --open` | Re-render the report |
@@ -78,6 +79,12 @@ a read-only Azure MCP server. CI (`.github/workflows/ci.yml`) runs lint, format 
 - The persona is unfiltered: full profanity, owners named and shamed. Its only floor is no slurs, no attacks
   on protected traits (race, gender, religion, disability and so on) and no threats. Check your audience before
   putting it on a big screen. Tune `PERSONA` in `roastbot/agent.py`.
+- `--guard` sends every line Claude wrote (which includes resource names and owner tags, but no Azure
+  credentials or raw resource data) to TypeSafe AI's Jev, a classifier that scores each line against the
+  persona's floor. Flagged lines go back to Claude for a rewrite (up to two rounds), and whatever is still flagged is
+  replaced with a house insult. Setup: `uv sync --extra guard` and set `TYPESAFE_API_KEY`. It fails open: with
+  no key or with the API down, the report is published with an UNCHECKED banner. Jev is in early access, and
+  `THRESHOLD` in `roastbot/guard.py` hasn't been tuned on live roasts yet. TypeSafe says it doesn't train on user data.
 - Azure MCP is pinned to `msmcp-azure==2.0.5` (`roastbot/agent.py` and `.mcp.json`). Tool names change between releases.
 
 ## Roadmap

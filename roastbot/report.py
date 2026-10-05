@@ -13,6 +13,8 @@ from collections import defaultdict
 from html import escape
 from pathlib import Path
 
+from . import guard
+
 FALLBACK_ROASTS = {
 	"unattached_disk": "A disk attached to NOTHING, billed like it's holding up the whole company. Who signed off on this shit?",
 	"orphaned_public_ip": "A public IP pointing at absolutely fuck all. World-class reachability, zero purpose. Just like this team's roadmap.",
@@ -311,6 +313,8 @@ pre { background:var(--code); border-radius:8px; padding:10px; margin:0 0 6px; o
 .hate li::before { content:"🖕"; position:absolute; left:0; }
 .clean { background:var(--panel); border:1px dashed var(--line); border-radius:14px; padding:28px; text-align:center; color:var(--muted); }
 .errors { color:var(--fire-2); font:12px var(--mono); }
+.unchecked { margin:16px 0 0; padding:10px 14px; border:2px dashed var(--fire-2); border-radius:8px; font:500 13px/1.5 var(--mono); }
+.unchecked b { color:var(--fire-2); text-transform:uppercase; letter-spacing:.08em; margin-right:6px; }
 footer { margin-top:36px; padding-top:14px; border-top:3px double var(--ink); color:var(--muted); font:12px/1.6 var(--mono); }
 """
 
@@ -319,6 +323,25 @@ FONTS = (
 	'<link href="https://fonts.googleapis.com/css2?family=Anton&family=Inter:wght@400;500;600;800'
 	'&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">'
 )
+
+
+def guard_notes(record: dict | None) -> tuple[str, str]:
+	"""(banner, footer line) describing the Jev content check. Both empty when --guard wasn't used."""
+	if not record:
+		return "", ""
+	replaced, rewrites = len(record.get("flags", [])), record.get("rewrites", 0)
+	if record.get("status") != "checked":
+		reason = escape(record.get("error") or "unknown error")
+		partial = f", minus {plural(replaced, 'line')} it flagged before failing" if replaced else ""
+		banner = (
+			f'<div class="unchecked"><b>Unchecked</b> The Jev content check couldn&#39;t run ({reason}). '
+			f"Claude's roasts are published as written{partial}.</div>"
+		)
+		return banner, ""
+	return "", (
+		f"<br>Content-checked by Jev (TypeSafe AI): {plural(rewrites, 'line')} sent back for a rewrite, "
+		f"{replaced} replaced with house insults."
+	)
 
 
 def render(scan: dict, findings: list[dict], roasts: dict, saved: dict[str, float]) -> str:
@@ -349,6 +372,7 @@ def render(scan: dict, findings: list[dict], roasts: dict, saved: dict[str, floa
 	)
 	scanned = scan["scanned_at"].replace("T", " ").split("+")[0]
 	flame_icons = "".join(f'<i class="{"on" if i < flames else ""}">🔥</i>' for i in range(5))
+	banner, checked = guard_notes(roasts.get("guard"))
 	clean = (
 		'<div class="clean">No waste found. Either you are a FinOps saint or the scan is lying. '
 		"Statistically, the scan is lying.</div>"
@@ -367,7 +391,7 @@ def render(scan: dict, findings: list[dict], roasts: dict, saved: dict[str, floa
     </div>
     <div class="index"><small>Dumpster Fire Index</small><div class="flames">{flame_icons}</div><b>{severity}</b></div>
   </header>
-
+  {banner}
   <section class="headline"><p>{escape(headline)}</p><cite>RoastBot, who has seen your invoice and needs a fucking drink</cite></section>
   {ticker}
 
@@ -393,7 +417,7 @@ def render(scan: dict, findings: list[dict], roasts: dict, saved: dict[str, floa
   {f'<ul class="errors">{errors}</ul>' if errors else ""}
 
   <footer>Prices are pay-as-you-go list estimates, not invoice amounts. Your dignity was not priced; it was already worth jack shit.
-    Generated read-only: RoastBot judges, it doesn't clean up your mess. Complaints go to /dev/null.</footer>
+    Generated read-only: RoastBot judges, it doesn't clean up your mess. Complaints go to /dev/null.{checked}</footer>
 </main></body></html>"""
 
 
@@ -403,6 +427,7 @@ def finalize(out: Path, open_browser: bool = False) -> Path:
 	roasts_file = out / "roasts.json"
 	# Verdicts are keyed by stable finding id, so they carry over to rescans (e.g. after someone fixes something).
 	roasts = json.loads(roasts_file.read_text(encoding="utf-8")) if roasts_file.exists() else {}
+	roasts = guard.apply(roasts)  # lines the Jev content check flagged fall back to the house insults
 	findings = confirmed(scan, roasts)
 
 	history = out / "history"
