@@ -32,4 +32,4 @@ def test_skill_pins_the_package_version():
 	pyproject = (Path(__file__).parent.parent / "pyproject.toml").read_text(encoding="utf-8")
 	version = re.search(r'^version = "(.+)"', pyproject, re.M).group(1)
 	assert plugin["version"] == version
-	assert skill.count(f"azure-finops-agent@v{version} roastbot") == 2  # allowed-tools and ROASTBOT
+	assert skill.count(f"azure-finops-agent@v{version} roastbot") == 3  # allowed-tools (Bash, PowerShell), ROASTBOT
