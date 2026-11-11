@@ -8,6 +8,7 @@ it never fixes. Each finding comes with a suggested `az` command for a human to 
 [Azure MCP Server](https://learn.microsoft.com/azure/developer/azure-mcp-server/) (via `uvx`) · Azure Resource Graph · uv
 
 ## How it works
+
 ```
 uv run roastbot roast
   └─ Claude (Agent SDK) ── roastbot tools (in-process) ── scan_for_waste: Resource Graph sweep for candidates
@@ -19,6 +20,7 @@ uv run roastbot roast
                                                         ├ advisor_recommendation_list         extra material
                                                         └ pricing_get                         missing prices
 ```
+
 Azure MCP Server has no Resource Graph or networking tools, so the subscription-wide sweep for orphaned
 IPs, NICs, empty plans and snapshots is a deterministic Python query. Everything else goes through MCP.
 
@@ -26,6 +28,7 @@ IPs, NICs, empty plans and snapshots is a deterministic Python query. Everything
 idle running VMs (CPU via Azure Monitor) · empty App Service plans · orphaned NICs · old snapshots
 
 ## Setup
+
 ```powershell
 uv sync            # Python deps (Azure MCP is fetched on demand by uvx)
 az login           # Azure: used by both the sweep and Azure MCP
@@ -33,6 +36,7 @@ claude             # once, if Claude Code isn't logged in yet. The agent reuses 
 ```
 
 ## Use
+
 | Command | What it does |
 | --- | --- |
 | `uv run roastbot roast` | Full agent run over every subscription you can read |
@@ -44,24 +48,20 @@ claude             # once, if Claude Code isn't logged in yet. The agent reuses 
 Add `--model <id>` before the subcommand to pick a Claude model (default: your Claude Code default).
 
 ## Development
+
 ```powershell
 uv sync                                   # includes dev tools (ruff, pytest)
 uv run pytest -q                          # unit tests, no Azure needed
 uv run ruff check . ; uv run ruff format .
 ```
+
 VS Code: open the folder and accept the recommended extensions. The interpreter (`.venv`), ruff format-on-save,
 pytest discovery and debug configurations (`roast --demo`, `scan --demo`, `report`) are preconfigured. Claude Code:
 `.claude/settings.json` pre-approves safe commands and asks before anything destructive, and `.mcp.json` attaches
 a read-only Azure MCP server. CI (`.github/workflows/ci.yml`) runs lint, format check and tests.
 
-## Live demo
-1. The evening before: `uv run roastbot demo plant` (sandbox subscription, ~$0.30/h). It plants a disk, IPs, NICs,
-   a stopped VM, an idle VM and a snapshot. There's no App Service plan, because the demo subscription has no quota for one.
-2. Demo: `uv run roastbot roast --demo`. Optional encore: someone runs the suggested `az disk delete ...` for the P30
-   disk, then `uv run roastbot scan --demo` (seconds, no LLM). team-data jumps onto Savings Heroes.
-3. After: `uv run roastbot demo cleanup`.
-
 ## Caveats
+
 - Costs are pay-as-you-go list prices (disks and IPs from an East US table), not invoice amounts.
 - The persona is unfiltered: full profanity, owners named and shamed. Its only floor is no slurs, no attacks
   on protected traits (race, gender, religion, disability and so on) and no threats. Check your audience before
@@ -69,5 +69,6 @@ a read-only Azure MCP server. CI (`.github/workflows/ci.yml`) runs lint, format 
 - Azure MCP is pinned to `msmcp-azure==2.0.5` (`roastbot/agent.py` and `.mcp.json`). Tool names change between releases.
 
 ## Roadmap
+
 Teams Adaptive Card output · daily schedule under a Reader managed identity · Cost Management actuals ·
 human-approved fixes once Azure MCP has the write tools (VM deallocate, network cleanup).
