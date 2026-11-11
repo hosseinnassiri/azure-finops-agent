@@ -107,6 +107,26 @@ uv run roastbot --provider openai --model <deployment-name> roast --demo
 Tool-calling quality varies by model. Small local models often fumble the multi-step task. If the model stops early,
 the report still renders, with house insults in the gaps.
 
+### As a Claude Code skill
+
+RoastBot also ships as a Claude Code plugin, so Claude Code itself plays RoastBot in any folder. You don't need to
+clone this repo or set an API key. All you need is `az login` and uv.
+
+```
+/plugin marketplace add hosseinnassiri/azure-finops-agent
+/plugin install roastbot@roastbot
+/roastbot:roast --demo
+```
+
+The skill runs `roastbot scan` (installed on the fly with `uvx` from a tagged release), checks the findings with the
+plugin's read-only Azure MCP server, writes the roasts itself and renders the same report to `./roastbot-out`.
+
+This mode is less locked down than `roastbot roast`. The agent there has no shell at all. In Claude Code, the
+skill tells Claude never to change Azure or run the fix commands, and Claude Code's permission prompts still apply
+to everything else. Even so, it's only as read-only as the identity you're logged in with, so use a Reader-scoped
+login if that matters. The persona in `plugins/roastbot/skills/roast/SKILL.md` must match `PERSONA` in
+`roastbot/agent.py`, and `tests/test_plugin.py` enforces that.
+
 ## Development
 
 ```powershell
@@ -134,7 +154,8 @@ a read-only Azure MCP server. CI (`.github/workflows/ci.yml`) runs lint, format 
   `THRESHOLD` in `roastbot/guard.py` hasn't been tuned on live roasts yet. TypeSafe says it doesn't train on user data.
 - With `--provider openai`, Azure OpenAI's content filter may block the profane persona, and some models refuse it.
   RoastBot stops cleanly and renders what it has. Ask for a deployment with a looser filter, or tone down `PERSONA`.
-- Azure MCP is pinned to `msmcp-azure==3.0.0` (`roastbot/agent.py` and `.mcp.json`). Tool names change between releases.
+- Azure MCP is pinned to `msmcp-azure==3.0.0` (`roastbot/agent.py`, `.mcp.json` and `plugins/roastbot/.mcp.json`).
+  Tool names change between releases.
 
 ## Roadmap
 

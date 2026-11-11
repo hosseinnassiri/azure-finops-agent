@@ -1,0 +1,14 @@
+{
+  "name": "roastbot",
+  "owner": {
+    "name": "Hossein Nassiri"
+  },
+  "description": "RoastBot for Claude Code: a read-only Azure FinOps auditor with no manners.",
+  "plugins": [
+    {
+      "name": "roastbot",
+      "source": "./plugins/roastbot",
+      "description": "Find Azure waste, roast the owners, render a Wall of Shame report. Strictly read-only."
+    }
+  ]
+}

@@ -13,6 +13,9 @@ It's a contest and demo project, and the first slice of a broader infrastructure
 - The non-Claude engine (`openai_agent.py`, `--provider openai`) can only dispatch the tools it registers: the
   Azure MCP tools (same `azure_mcp_server()`, so always `--read-only`) plus `RoastTools`. Unknown names get an error
   result. Never add a shell, file or write tool to either engine.
+- The Claude Code skill (`plugins/roastbot`) can't be sandboxed like that, so its SKILL.md carries the rules in
+  prose: never change Azure, never run a finding's `fix_command`, verify only through the plugin's `--read-only`
+  Azure MCP server. Keep those rules at the top of the skill.
 - In production this runs under a Reader-scoped managed identity (picked up by `DefaultAzureCredential`
   and Azure MCP). Locally it uses `az login`.
 
@@ -28,6 +31,10 @@ It's a contest and demo project, and the first slice of a broader infrastructure
   optional `guard` extra, imported lazily, so `report.py` only uses the SDK-free `apply`
 - `roastbot/openai_agent.py`: the same agent on any OpenAI-compatible endpoint, with our own tool loop. `RoastTools` and
   `ROASTBOT_TOOLS` in `agent.py` are shared by both engines. `openai` is the optional `openai` extra
+- `plugins/roastbot/`: the Claude Code plugin (marketplace in `.claude-plugin/marketplace.json`). Its `roast` skill
+  has Claude Code play RoastBot: `uvx --from git+...@v<version> roastbot scan`, verify via its own `.mcp.json`, write
+  `roasts.json`, `roastbot report`. `tests/test_plugin.py` keeps its persona, MCP server and version in sync with
+  `agent.py` and `pyproject.toml`. When you bump the version, bump `plugin.json` and the skill's git tag, and push the tag
 
 ## Commands
 
@@ -39,6 +46,7 @@ It's a contest and demo project, and the first slice of a broader infrastructure
 
 ## Tooling notes
 - `.mcp.json` gives Claude Code sessions in this repo the same read-only Azure MCP server the agent uses.
-- Azure MCP is pinned (`msmcp-azure==3.0.0`) in both `roastbot/agent.py` and `.mcp.json`. Bump them together.
+- Azure MCP is pinned (`msmcp-azure==3.0.0`) in `roastbot/agent.py`, `.mcp.json` and `plugins/roastbot/.mcp.json`.
+  Bump them together.
 - The demo subscription has zero App Service quota, and East US often lacks capacity for small VM sizes.
   `demo plant` defaults to canadacentral and falls back through `VM_SIZES`.
