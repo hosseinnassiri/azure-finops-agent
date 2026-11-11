@@ -127,6 +127,11 @@ to everything else. Even so, it's only as read-only as the identity you're logge
 login if that matters. The persona in `plugins/roastbot/skills/roast/SKILL.md` must match `PERSONA` in
 `roastbot/agent.py`, and `tests/test_plugin.py` enforces that.
 
+To pick up new releases, run `/plugin marketplace update roastbot`, or turn on auto-update for the marketplace
+under **Marketplaces** in `/plugin`. CI cuts a patch release on every push to `main` that changes the plugin or the
+package: it bumps the version, tags it and publishes a GitHub release. Changes that only touch docs or tests don't
+cut a release.
+
 ## Development
 
 ```powershell

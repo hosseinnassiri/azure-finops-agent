@@ -15,3 +15,67 @@ jobs:
       - run: uv run ruff check .
       - run: uv run ruff format --check .
       - run: uv run pytest -q
+
+  # Publishes the Claude Code plugin. Both marketplaces read this repo, so "publish" means: bump the version
+  # (users only get a new copy when it changes), tag v<version> (the skill's uvx pin), and fast-forward the
+  # `release` branch (what Anthropic's directory tracks). See README "As a Claude Code skill".
+  release:
+    needs: check
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    concurrency:
+      group: release
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: astral-sh/setup-uv@v6
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Decide what to release
+        id: plan
+        run: |
+          version=$(sed -nE 's/^version = "(.+)"/\1/p' pyproject.toml)
+          if ! git rev-parse -q --verify "refs/tags/v$version" >/dev/null; then
+            action=tag    # bumped by hand, or never released: release this version as is
+          elif git diff --quiet "v$version" HEAD -- plugins roastbot .claude-plugin pyproject.toml uv.lock; then
+            action=none   # only docs, tests or CI changed: nothing a user would receive
+          else
+            action=bump
+          fi
+          echo "v$version -> $action"
+          echo "action=$action" >> "$GITHUB_OUTPUT"
+
+      - name: Bump the patch version
+        if: steps.plan.outputs.action == 'bump'
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          version=$(uv run --no-project python scripts/bump_version.py patch)
+          git commit -am "Release v$version [skip ci]"
+
+      - name: Validate the release
+        if: steps.plan.outputs.action != 'none'
+        run: |
+          uv sync --locked --all-extras
+          uv run pytest -q tests/test_plugin.py
+          npx -y @anthropic-ai/claude-code@2.1.322 plugin validate --strict .
+          npx -y @anthropic-ai/claude-code@2.1.322 plugin validate --strict plugins/roastbot
+
+      - name: Tag, push and create the GitHub release
+        if: steps.plan.outputs.action != 'none'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          version=$(sed -nE 's/^version = "(.+)"/\1/p' pyproject.toml)
+          git tag -a "v$version" -m "RoastBot $version"
+          git push origin HEAD:main "v$version"   # fails if main moved meanwhile; the next push releases it
+          git push origin HEAD:release
+          gh release create "v$version" --title "RoastBot $version" --generate-notes

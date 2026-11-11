@@ -34,7 +34,18 @@ It's a contest and demo project, and the first slice of a broader infrastructure
 - `plugins/roastbot/`: the Claude Code plugin (marketplace in `.claude-plugin/marketplace.json`). Its `roast` skill
   has Claude Code play RoastBot: `uvx --from git+...@v<version> roastbot scan`, verify via its own `.mcp.json`, write
   `roasts.json`, `roastbot report`. `tests/test_plugin.py` keeps its persona, MCP server and version in sync with
-  `agent.py` and `pyproject.toml`. When you bump the version, bump `plugin.json` and the skill's git tag, and push the tag
+  `agent.py` and `pyproject.toml`
+
+## Releases
+
+- Every push to `main` that changes `plugins/`, `roastbot/`, `.claude-plugin/`, `pyproject.toml` or `uv.lock` is a
+  release. The `release` job in `ci.yml` bumps the patch version (`scripts/bump_version.py`), commits
+  `Release vX.Y.Z [skip ci]`, tags `vX.Y.Z`, fast-forwards the `release` branch and creates a GitHub release. So
+  `git pull` after pushing.
+- Don't bump the version by hand for a patch. For a minor or major release, run
+  `uv run --no-project python scripts/bump_version.py minor` and push. CI sees the untagged version and releases it as is.
+- Users only receive a plugin change when its `version` changes. The skill's `@vX.Y.Z` pin must name a tag that
+  exists, which is why the tag is pushed with the release commit.
 
 ## Commands
 
