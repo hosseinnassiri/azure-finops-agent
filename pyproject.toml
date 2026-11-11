@@ -13,6 +13,14 @@ dependencies = [
 [project.scripts]
 roastbot = "roastbot.cli:main"
 
+[project.optional-dependencies]
+guard = [
+    "typesafe-sdk>=0.7.2",
+]
+openai = [
+    "openai>=3.24.0",
+]
+
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"

@@ -37,3 +37,42 @@ def resource_graph(query: str, subscriptions: list[str] | None = None) -> list[d
 		skip_token = response.skip_token
 		if not skip_token:
 			return rows
+
+
+SUBSCRIPTIONS_QUERY = """
+    ResourceContainers
+    | where type =~ 'microsoft.resources/subscriptions'
+    | project subscriptionId, name
+"""
+
+
+class SubscriptionError(ValueError):
+	pass
+
+
+def match_subscriptions(refs: list[str], visible: list[dict]) -> list[dict]:
+	"""Resolve subscription IDs or display names (case-insensitive) to [{"id", "name"}], deduplicated, in order."""
+	resolved: list[dict] = []
+	for ref in refs:
+		key = ref.strip().lower()
+		hits = [s for s in visible if key in (s["subscriptionId"].lower(), s["name"].lower())]
+		if not hits:
+			names = ", ".join(sorted(s["name"] for s in visible)) or "none"
+			raise SubscriptionError(
+				f"Subscription {ref!r} not found or not readable by this identity in the current tenant "
+				f"(visible: {names}). For another tenant, run `az account set --subscription <id>` first."
+			)
+		if len(hits) > 1:
+			ids = ", ".join(s["subscriptionId"] for s in hits)
+			raise SubscriptionError(f"Subscription name {ref!r} is ambiguous ({ids}). Pass the ID instead.")
+		sub = {"id": hits[0]["subscriptionId"], "name": hits[0]["name"]}
+		if sub not in resolved:
+			resolved.append(sub)
+	return resolved
+
+
+def resolve_subscriptions(refs: list[str] | None) -> list[dict] | None:
+	"""Look up --subscription values in Resource Graph. None means no filter: every readable subscription."""
+	if not refs:
+		return None
+	return match_subscriptions(refs, resource_graph(SUBSCRIPTIONS_QUERY))
