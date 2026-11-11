@@ -35,3 +35,12 @@ def test_finding_ids_are_stable_and_case_insensitive():
 	a = make(row, "unattached_disk", **kwargs)
 	b = make({**row, "id": row["id"].lower()}, "unattached_disk", **kwargs)
 	assert a.id == b.id and a.id.startswith("f-")
+
+
+def test_price_cache_follows_the_output_folder(tmp_path, monkeypatch):
+	# The plugin promises it writes only to ./roastbot-out/, so the cache can't live in a fixed ./out.
+	from roastbot import pricing
+
+	monkeypatch.setattr(pricing, "CACHE_FILE", pricing.CACHE_FILE)
+	pricing.use_cache_in(tmp_path / "roastbot-out")
+	assert pricing.CACHE_FILE == tmp_path / "roastbot-out" / ".price-cache.json"

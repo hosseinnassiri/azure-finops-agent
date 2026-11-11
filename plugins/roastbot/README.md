@@ -17,6 +17,47 @@ doesn't work on claude.ai or in Cowork.
 
 Ask for a "work-safe" roast if you want the contempt without the swearing.
 
+## Examples
+
+- `/roastbot:roast`: roast every subscription you can read.
+- `/roastbot:roast --subscription "Production"`: roast one subscription, by name or ID. Repeat the flag for more.
+- `Roast our Azure dev subscription, but keep it work-safe`: the same audit and report, without the swearing.
+- `Which of my Azure VMs are idle, and what are they costing me?`: Claude picks the skill up from the question.
+- `/roastbot:roast --demo`: short thresholds, so resources created in the last few minutes already count as waste.
+
+## Try it without real waste
+
+To see a full roast on a subscription that has nothing to find, clone
+<https://github.com/hosseinnassiri/azure-finops-agent>, run `uv run roastbot demo plant` (this creates about $225 a
+month of deliberately wasteful resources in a resource group called `rg-roastbot-demo`, using your Azure login), run
+`/roastbot:roast --demo`, then remove everything with `uv run roastbot demo cleanup`. The plugin itself contains
+none of this demo code.
+
+## Troubleshooting
+
+- **Authentication errors:** run `az login`, then `az account show` to check the account. RoastBot uses the same
+  `DefaultAzureCredential` chain as the Azure CLI.
+- **"Subscription ... not found or not readable by this identity":** the error lists the subscriptions you can see.
+  For another tenant, run `az account set --subscription <id>` first.
+- **Zero findings on a subscription you know is messy:** your login may lack Reader access there, or the waste is
+  newer than the idle thresholds. Try `--demo`, or pass `--subscription` explicitly.
+- **`uv` not found:** install it from <https://docs.astral.sh/uv/getting-started/installation/>, then restart
+  Claude Code.
+- **The first run is slow:** `uv` downloads the Azure SDK and the Azure MCP Server once. Later runs reuse its cache.
+- **A permission prompt for an Azure tool:** the skill pre-approves six read-only tools. If Claude asks for another
+  one, it's outside the skill's normal steps, and you can decline.
+- **The `azure` MCP server fails to start:** run
+  `uv run --locked --isolated --project <plugin folder>/mcp azmcp --version` in a terminal to see the error. The
+  plugin folder is `~/.claude/plugins/cache/roastbot/roastbot/<version>`.
+
+## Support, security and privacy
+
+- Questions and bugs: <https://github.com/hosseinnassiri/azure-finops-agent/issues>
+- Security problems: report them privately, as described in
+  [SECURITY.md](https://github.com/hosseinnassiri/azure-finops-agent/blob/main/SECURITY.md)
+- Privacy policy: [PRIVACY.md](PRIVACY.md), also at
+  <https://github.com/hosseinnassiri/azure-finops-agent/blob/main/plugins/roastbot/PRIVACY.md>
+
 ## Content warning
 
 By default the roasts are profane and insulting, aimed at the resources and at the teams named in their `owner`
@@ -49,8 +90,8 @@ tags. They never name individual people, and they stay away from slurs, protecte
   activity logs for the most expensive findings, Advisor recommendations and retail prices. Activity logs contain
   the email addresses of the people who changed resources. RoastBot uses them only to see when a resource was
   created or changed, and keeps names and email addresses out of everything it writes.
-- **Writes** only to `./roastbot-out/`: `findings.json`, `roasts.json`, `report.html` and a `history/` folder that
-  tracks progress between runs. The skill pre-approves reading and writing in that folder and nowhere else.
+- **Writes** only to `./roastbot-out/`: `findings.json`, `roasts.json`, `report.html`, a `history/` folder that
+  tracks progress between runs, and a cache of public Azure prices. The skill pre-approves reading and writing in that folder and nowhere else.
 - **Sends** nothing anywhere else. Its only network traffic is to Azure's APIs, the public Azure retail prices
   API (`prices.azure.com`) and PyPI for the dependency downloads. It has no telemetry of its own. The roasts are
   written by the Claude session you're already using.

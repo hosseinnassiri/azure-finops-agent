@@ -8,6 +8,7 @@ import sys
 from dataclasses import asdict
 from pathlib import Path
 
+from . import pricing
 from .detectors import DETECTORS
 
 DEFAULTS = {"idle_lookback_hours": 168, "idle_cpu_pct": 5.0, "snapshot_age_days": 30}
@@ -27,6 +28,7 @@ def scope_label(subscriptions: list[dict] | None) -> str:
 def run_scan(subscriptions: list[dict] | None, settings: dict, out: Path) -> dict:
 	"""subscriptions: resolved [{"id", "name"}] from cloud.resolve_subscriptions, or None for everything readable."""
 	ids = [s["id"] for s in subscriptions] if subscriptions else None
+	pricing.use_cache_in(out)
 	findings, errors = [], []
 	for detect in DETECTORS:
 		try:

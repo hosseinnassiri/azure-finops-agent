@@ -91,3 +91,11 @@ def test_plugin_ships_the_license():
 	plugin = json.loads((PLUGIN / ".claude-plugin" / "plugin.json").read_text(encoding="utf-8"))
 	assert plugin["license"] == "Apache-2.0"
 	assert 'license = "Apache-2.0"' in (ROOT / "pyproject.toml").read_text(encoding="utf-8")
+
+
+def test_plugin_ships_a_privacy_policy():
+	# Anthropic's directory policy requires one for software that connects to a remote service.
+	policy = (PLUGIN / "PRIVACY.md").read_text(encoding="utf-8")
+	for must in ("prices.azure.com", "Google Fonts", "AZURE_MCP_COLLECT_TELEMETRY=false", "roastbot-out"):
+		assert must in policy, must
+	assert "PRIVACY.md" in (PLUGIN / "README.md").read_text(encoding="utf-8")

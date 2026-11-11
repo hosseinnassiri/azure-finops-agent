@@ -36,7 +36,9 @@ It's a contest and demo project, and the first slice of a broader infrastructure
   ${CLAUDE_PLUGIN_ROOT}/app roastbot ... scan`), verify via its own `.mcp.json`, write `roasts.json`, `... report`.
   `tests/test_plugin.py` keeps its persona, MCP server, versions, license and allowed-tools in sync with `agent.py`,
   `.mcp.json` and `pyproject.toml`. Its `README.md` is the Anthropic directory listing and the security scan's
-  disclosure: when the plugin starts running, reading, writing or sending something new, say so there
+  disclosure: when the plugin starts running, reading, writing or sending something new, say so there and in
+  `plugins/roastbot/PRIVACY.md` (the policy the directory requires, which also covers the CLI's optional data flows).
+  Privately reported security issues come in through `SECURITY.md`
 - `plugins/roastbot/app/roastbot/` is a generated copy of the read-only modules (`BUNDLE` in
   `scripts/bump_version.py`): never edit it. Change `roastbot/` and the release job copies it over. A bundled module
   must not import `agent`, `demo` or `openai_agent` at module level (`cli.py` imports them inside their commands), and

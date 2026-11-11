@@ -173,6 +173,11 @@ a read-only Azure MCP server. CI (`.github/workflows/ci.yml`) runs lint, format 
 Teams Adaptive Card output · daily schedule under a Reader managed identity · Cost Management actuals ·
 human-approved fixes once Azure MCP has the write tools (VM deallocate, network cleanup).
 
+## Privacy and security
+
+RoastBot runs locally and sends the developer nothing: see the [privacy policy](plugins/roastbot/PRIVACY.md).
+Report security problems privately, as described in [SECURITY.md](SECURITY.md).
+
 ## License
 
 [Apache License 2.0](LICENSE).
