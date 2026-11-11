@@ -118,6 +118,9 @@ clone this repo or set an API key. All you need is `az login` and uv.
 /roastbot:roast --demo
 ```
 
+On a machine without a GitHub SSH key, set `CLAUDE_CODE_PLUGIN_PREFER_HTTPS=1` first. `claude plugin install` in
+the shell falls back to HTTPS on its own, but installs and updates from inside a session don't.
+
 The skill runs `roastbot scan` (installed on the fly with `uvx` from a tagged release), checks the findings with the
 plugin's read-only Azure MCP server, writes the roasts itself and renders the same report to `./roastbot-out`.
 
