@@ -2,10 +2,13 @@
   "mcpServers": {
     "azure": {
       "type": "stdio",
-      "command": "uvx",
+      "command": "uv",
       "args": [
-        "--from",
-        "msmcp-azure==3.0.0",
+        "run",
+        "--locked",
+        "--isolated",
+        "--project",
+        "${CLAUDE_PLUGIN_ROOT}/mcp",
         "azmcp",
         "server",
         "start",

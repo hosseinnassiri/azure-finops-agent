@@ -37,9 +37,14 @@ tags. They never name individual people, and they stay away from slurs, protecte
   resources. `uv` installs its dependencies (the Azure SDK for Python and `requests`) from PyPI, pinned by
   `app/uv.lock`, into a throwaway environment, so nothing is written into the plugin folder. The skill pre-approves
   exactly those two commands.
-- **Starts** the Azure MCP Server (`uvx --from msmcp-azure==3.0.0 azmcp server start --read-only`), limited to its
-  compute, monitor, pricing, advisor and group tools, with its usage telemetry to Microsoft turned off
-  (`AZURE_MCP_COLLECT_TELEMETRY=false`). This plugin pre-approves only that server, which runs with `--read-only`.
+- **Starts** the Azure MCP Server (`msmcp-azure` 3.0.0 from PyPI, pinned by hash in `mcp/uv.lock`) with
+  `uv run --locked --isolated --project <plugin>/mcp azmcp server start --read-only`, limited to its compute,
+  monitor, pricing, advisor and group tools, with its usage telemetry to Microsoft turned off
+  (`AZURE_MCP_COLLECT_TELEMETRY=false`). The skill pre-approves exactly the six read-only tools it calls:
+  `monitor_metrics_query`, `compute_vm_get`, `compute_disk_get`, `monitor_activitylog_list`,
+  `advisor_recommendation_list` and `pricing_get`.
+- **Uses your Azure login.** The bundled scan and the Azure MCP Server both authenticate with
+  `DefaultAzureCredential` (your `az login` or a managed identity) and send that token only to Azure.
 - **Reads from Azure**, using your credentials: resource metadata through Azure Resource Graph, CPU metrics,
   activity logs for the most expensive findings, Advisor recommendations and retail prices. Activity logs contain
   the email addresses of the people who changed resources. RoastBot uses them only to see when a resource was

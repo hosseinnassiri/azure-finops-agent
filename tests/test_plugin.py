@@ -23,10 +23,19 @@ def test_skill_persona_matches_agent():
 
 def test_plugin_mcp_server_matches_agent():
 	server = agent.azure_mcp_server()
-	for path in (PLUGIN / ".mcp.json", ROOT / ".mcp.json"):  # the plugin's and this repo's
-		assert json.loads(path.read_text(encoding="utf-8"))["mcpServers"]["azure"] == server, path
+	assert json.loads((ROOT / ".mcp.json").read_text(encoding="utf-8"))["mcpServers"]["azure"] == server
 	assert "--read-only" in server["args"]
 	assert server["env"]["AZURE_MCP_COLLECT_TELEMETRY"] == "false"  # the plugin README promises no telemetry
+	# The plugin starts the same azmcp command from a locked uv project (the directory rejects a bare PyPI pin).
+	plugin = json.loads((PLUGIN / ".mcp.json").read_text(encoding="utf-8"))["mcpServers"]["azure"]
+	azmcp = server["args"][server["args"].index("azmcp") :]
+	assert plugin["command"] == "uv"
+	assert plugin["args"] == ["run", "--locked", "--isolated", "--project", "${CLAUDE_PLUGIN_ROOT}/mcp", *azmcp]
+	assert plugin["env"] == server["env"]
+	pinned = (PLUGIN / "mcp" / "pyproject.toml").read_text(encoding="utf-8")
+	assert f'dependencies = ["{agent.AZMCP_VERSION}"]' in pinned
+	lock = (PLUGIN / "mcp" / "uv.lock").read_text(encoding="utf-8")
+	assert f'name = "msmcp-azure"\nversion = "{agent.AZMCP_VERSION.split("==")[1]}"' in lock
 
 
 def test_versions_match():
@@ -45,6 +54,12 @@ def test_skill_runs_only_the_bundled_scan_and_report():
 	assert len(shell_rules) == 4
 	for rule in shell_rules:
 		assert re.fullmatch(re.escape(RUN) + r" --out roastbot-out (scan|report) \*", rule), rule
+	mcp = re.findall(r"mcp__plugin_roastbot_azure\w*", allowed)
+	assert "mcp__plugin_roastbot_azure" not in mcp  # exact tools, never the whole server
+	named = {
+		f"mcp__plugin_roastbot_azure__{t}" for t in re.findall(r"`((?:monitor|compute|advisor|pricing)_\w+)`", skill)
+	}
+	assert set(mcp) == named  # every tool the steps call, and nothing else
 	assert re.findall(r"\b(Read|Edit|Write)\(([^)]*)\)", allowed) == [
 		("Read", "./roastbot-out/**"),
 		("Edit", "./roastbot-out/**"),

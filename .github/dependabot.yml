@@ -8,8 +8,12 @@ updates:
     directories:
       - /
       - /plugins/roastbot/app
+      - /plugins/roastbot/mcp
     schedule:
       interval: weekly
+    ignore:
+      # Azure MCP tool names change between releases: bump it by hand in all pin locations (see CLAUDE.md)
+      - dependency-name: msmcp-azure
     groups:
       python:
         patterns: ["*"]

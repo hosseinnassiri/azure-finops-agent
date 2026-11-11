@@ -70,7 +70,10 @@ It's a contest and demo project, and the first slice of a broader infrastructure
 
 ## Tooling notes
 - `.mcp.json` gives Claude Code sessions in this repo the same read-only Azure MCP server the agent uses.
-- Azure MCP is pinned (`msmcp-azure==3.0.0`) in `roastbot/agent.py`, `.mcp.json` and `plugins/roastbot/.mcp.json`.
-  Bump them together.
+- Azure MCP is pinned (`msmcp-azure==3.0.0`) in `roastbot/agent.py`, `.mcp.json` and `plugins/roastbot/mcp/`
+  (`pyproject.toml` plus `uv.lock`: the directory only accepts a lockfile pin, not `uvx pkg==X`). Bump all of them
+  together and rerun `uv lock --project plugins/roastbot/mcp`; `tests/test_plugin.py` checks they agree.
+- Anthropic's directory: the skill's `allowed-tools` lists exact MCP tools, never the whole server. The listing icon
+  (`plugins/roastbot/.claude-plugin/icon.png`) is fixed the first time the plugin is saved in the portal.
 - The demo subscription has zero App Service quota, and East US often lacks capacity for small VM sizes.
   `demo plant` defaults to canadacentral and falls back through `VM_SIZES`.

@@ -1,0 +1,27 @@
+version = 1
+revision = 5
+requires-python = ">=3.10"
+
+[[package]]
+name = "msmcp-azure"
+version = "3.0.0"
+source = { registry = "https://pypi.org/simple" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/8e/71/2686a2f2e01c2bae6175b12e8fc99781e9b7dbb710e15f12a4f098f675ce/msmcp_azure-3.0.0-py3-none-macosx_11_0_arm64.whl", hash = "sha256:ead0352479028bedb273a8dec8d303dabe1e4d064db64b0d997fa242bae91694", size = 51627746, upload-time = "2026-10-12T22:33:00.594Z" },
+    { url = "https://files.pythonhosted.org/packages/ac/27/894a7a7c703336b19ba42a68a00cca046524f28a8ca39734c55aa54ddd4f/msmcp_azure-3.0.0-py3-none-macosx_11_0_x86_64.whl", hash = "sha256:f43ac2b977a888e536c17f8a50ba67d03b71966e7e2ad7a14febe9e88cfc9623", size = 52634694, upload-time = "2026-10-12T22:33:05.429Z" },
+    { url = "https://files.pythonhosted.org/packages/f5/6b/0acac96f04a6483ae34794706f8612bfce71cae2e73be7568e857684de9f/msmcp_azure-3.0.0-py3-none-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:e1e64425ae2d1cfdd1c36b81020d89dc43f11bffd54790ec066234e1d476b76d", size = 49392457, upload-time = "2026-10-12T22:33:09.38Z" },
+    { url = "https://files.pythonhosted.org/packages/45/f5/e3c4ee9ea0e11c3cbabb31649eb6f0bae55aca606a69957cf52a3140bd5c/msmcp_azure-3.0.0-py3-none-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:fe231fa7d8f310e7ce8b1943e8054860101e66ccdcafd72530b74e3d590a337f", size = 61725579, upload-time = "2026-10-12T22:33:13.67Z" },
+    { url = "https://files.pythonhosted.org/packages/ed/45/644f08ef5f9ab5e4dd438e9676189e8c2e8a83929865438e05df01fb2abf/msmcp_azure-3.0.0-py3-none-win_amd64.whl", hash = "sha256:89a464104bcf2834ed8e2a7fb50caa07a1073dac55e278a45a3fc71477879679", size = 50815649, upload-time = "2026-10-12T22:33:17.859Z" },
+    { url = "https://files.pythonhosted.org/packages/45/18/20e2cb6aa554441892b7b4cc3433164d712b24affb36842212828c495776/msmcp_azure-3.0.0-py3-none-win_arm64.whl", hash = "sha256:3009931013d35b1fd1eb25be48926cef670605d222c0208463a891526ecaef0f", size = 50461067, upload-time = "2026-10-12T22:33:21.73Z" },
+]
+
+[[package]]
+name = "roastbot-azure-mcp"
+version = "0.0.0"
+source = { virtual = "." }
+dependencies = [
+    { name = "msmcp-azure" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "msmcp-azure", specifier = "==3.0.0" }]

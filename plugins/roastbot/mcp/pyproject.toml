@@ -1,0 +1,11 @@
+# Pins the Azure MCP Server for the Claude Code plugin by a committed lockfile (Anthropic's directory doesn't accept a
+# bare PyPI version as a pin). The plugin's .mcp.json starts it with `uv run --locked --isolated --project` this folder.
+# The version must match AZMCP_VERSION in roastbot/agent.py; tests/test_plugin.py checks it. Bump both deliberately.
+[project]
+name = "roastbot-azure-mcp"
+version = "0.0.0"
+requires-python = ">=3.10"
+dependencies = ["msmcp-azure==3.0.0"]
+
+[tool.uv]
+package = false
