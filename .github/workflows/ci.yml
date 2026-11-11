@@ -4,6 +4,7 @@ on:
   push:
     branches: [main]
   pull_request:
+  workflow_dispatch: # rerun a release by hand, e.g. after a push raced the release job
 
 jobs:
   check:
@@ -21,7 +22,7 @@ jobs:
   # `release` branch (what Anthropic's directory tracks). See README "As a Claude Code skill".
   release:
     needs: check
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     permissions:
       contents: write

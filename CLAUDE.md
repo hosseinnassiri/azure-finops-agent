@@ -44,6 +44,9 @@ It's a contest and demo project, and the first slice of a broader infrastructure
   `git pull` after pushing.
 - Don't bump the version by hand for a patch. For a minor or major release, run
   `uv run --no-project python scripts/bump_version.py minor` and push. CI sees the untagged version and releases it as is.
+- Never write GitHub's skip-ci marker (square brackets around "skip ci") anywhere in a commit message you push,
+  not even quoted: GitHub then runs no workflow for that push, so nothing is checked or released. Only the CI's own
+  release commit carries it. If a release was skipped or raced, rerun it with `gh workflow run ci --ref main`.
 - Users only receive a plugin change when its `version` changes. The skill's `@vX.Y.Z` pin must name a tag that
   exists, which is why the tag is pushed with the release commit.
 
