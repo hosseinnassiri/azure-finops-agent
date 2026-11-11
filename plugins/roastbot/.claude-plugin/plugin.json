@@ -7,5 +7,6 @@
   },
   "homepage": "https://github.com/hosseinnassiri/azure-finops-agent",
   "repository": "https://github.com/hosseinnassiri/azure-finops-agent",
+  "license": "Apache-2.0",
   "keywords": ["azure", "finops", "cost", "waste", "roast", "mcp"]
 }

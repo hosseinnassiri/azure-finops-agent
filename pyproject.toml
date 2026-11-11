@@ -3,6 +3,8 @@ name = "roastbot"
 version = "0.2.1"
 description = "Rude, sarcastic Azure FinOps agent: finds cloud waste and roasts whoever owns it"
 requires-python = ">=3.11"
+license = "Apache-2.0"
+license-files = ["LICENSE"]
 dependencies = [
     "claude-agent-sdk>=0.1",
     "azure-identity>=1.17",

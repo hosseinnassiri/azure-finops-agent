@@ -33,3 +33,12 @@ def test_skill_pins_the_package_version():
 	version = re.search(r'^version = "(.+)"', pyproject, re.M).group(1)
 	assert plugin["version"] == version
 	assert skill.count(f"azure-finops-agent@v{version} roastbot") == 3  # allowed-tools (Bash, PowerShell), ROASTBOT
+
+
+def test_plugin_ships_the_license():
+	# Installs copy only plugins/roastbot, and Anthropic's directory scans only that folder.
+	root = Path(__file__).parent.parent
+	assert (PLUGIN / "LICENSE").read_bytes() == (root / "LICENSE").read_bytes()
+	plugin = json.loads((PLUGIN / ".claude-plugin" / "plugin.json").read_text(encoding="utf-8"))
+	assert plugin["license"] == "Apache-2.0"
+	assert 'license = "Apache-2.0"' in (root / "pyproject.toml").read_text(encoding="utf-8")

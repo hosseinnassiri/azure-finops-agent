@@ -169,3 +169,7 @@ a read-only Azure MCP server. CI (`.github/workflows/ci.yml`) runs lint, format 
 
 Teams Adaptive Card output · daily schedule under a Reader managed identity · Cost Management actuals ·
 human-approved fixes once Azure MCP has the write tools (VM deallocate, network cleanup).
+
+## License
+
+[Apache License 2.0](LICENSE).
