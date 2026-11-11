@@ -32,23 +32,33 @@ It's a contest and demo project, and the first slice of a broader infrastructure
 - `roastbot/openai_agent.py`: the same agent on any OpenAI-compatible endpoint, with our own tool loop. `RoastTools` and
   `ROASTBOT_TOOLS` in `agent.py` are shared by both engines. `openai` is the optional `openai` extra
 - `plugins/roastbot/`: the Claude Code plugin (marketplace in `.claude-plugin/marketplace.json`). Its `roast` skill
-  has Claude Code play RoastBot: `uvx --from git+...@v<version> roastbot scan`, verify via its own `.mcp.json`, write
-  `roasts.json`, `roastbot report`. `tests/test_plugin.py` keeps its persona, MCP server and version in sync with
-  `agent.py` and `pyproject.toml`
+  has Claude Code play RoastBot: run the bundled `app/` (`uv run --locked --no-editable --isolated --project
+  ${CLAUDE_PLUGIN_ROOT}/app roastbot ... scan`), verify via its own `.mcp.json`, write `roasts.json`, `... report`.
+  `tests/test_plugin.py` keeps its persona, MCP server, versions, license and allowed-tools in sync with `agent.py`,
+  `.mcp.json` and `pyproject.toml`. Its `README.md` is the Anthropic directory listing and the security scan's
+  disclosure: when the plugin starts running, reading, writing or sending something new, say so there
+- `plugins/roastbot/app/roastbot/` is a generated copy of the read-only modules (`BUNDLE` in
+  `scripts/bump_version.py`): never edit it. Change `roastbot/` and the release job copies it over. A bundled module
+  must not import `agent`, `demo` or `openai_agent` at module level (`cli.py` imports them inside their commands), and
+  must not run subprocesses. When a bundled module needs a new dependency, add it to `plugins/roastbot/app/pyproject.toml`
+  too, then run `uv lock --project plugins/roastbot/app`
+- Azure MCP's usage telemetry is off (`AZURE_MCP_COLLECT_TELEMETRY=false` in `azure_mcp()` and both `.mcp.json` files),
+  because the plugin README promises no telemetry
 
 ## Releases
 
 - Every push to `main` that changes `plugins/`, `roastbot/`, `.claude-plugin/`, `pyproject.toml` or `uv.lock` is a
-  release. The `release` job in `ci.yml` bumps the patch version (`scripts/bump_version.py`), commits
-  `Release vX.Y.Z [skip ci]`, tags `vX.Y.Z`, fast-forwards the `release` branch and creates a GitHub release. So
-  `git pull` after pushing.
+  release. The `release` job in `ci.yml` bumps the patch version and syncs the plugin's bundle
+  (`scripts/bump_version.py`), commits `Release vX.Y.Z [skip ci]`, tags `vX.Y.Z`, fast-forwards the `release` branch
+  and creates a GitHub release. So `git pull` after pushing.
+- `main` and `release` reject force pushes and deletion, and `v*` tags can't be moved or deleted (repo rulesets).
+  Actions in `ci.yml` are pinned to commit SHAs; Dependabot (`.github/dependabot.yml`) proposes updates.
 - Don't bump the version by hand for a patch. For a minor or major release, run
   `uv run --no-project python scripts/bump_version.py minor` and push. CI sees the untagged version and releases it as is.
 - Never write GitHub's skip-ci marker (square brackets around "skip ci") anywhere in a commit message you push,
   not even quoted: GitHub then runs no workflow for that push, so nothing is checked or released. Only the CI's own
   release commit carries it. If a release was skipped or raced, rerun it with `gh workflow run ci --ref main`.
-- Users only receive a plugin change when its `version` changes. The skill's `@vX.Y.Z` pin must name a tag that
-  exists, which is why the tag is pushed with the release commit.
+- Users only receive a plugin change when its `version` changes.
 
 ## Commands
 

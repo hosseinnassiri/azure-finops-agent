@@ -121,8 +121,10 @@ clone this repo or set an API key. All you need is `az login` and uv.
 On a machine without a GitHub SSH key, set `CLAUDE_CODE_PLUGIN_PREFER_HTTPS=1` first. `claude plugin install` in
 the shell falls back to HTTPS on its own, but installs and updates from inside a session don't.
 
-The skill runs `roastbot scan` (installed on the fly with `uvx` from a tagged release), checks the findings with the
-plugin's read-only Azure MCP server, writes the roasts itself and renders the same report to `./roastbot-out`.
+The skill runs `roastbot scan` from a copy of the read-only modules bundled in the plugin (`plugins/roastbot/app`,
+refreshed by CI at every release), with its dependencies locked. It checks the findings with the plugin's read-only Azure MCP server, writes the
+roasts itself and renders the same report to `./roastbot-out`. It reads and writes files only in that folder.
+[plugins/roastbot/README.md](plugins/roastbot/README.md) lists everything it runs, reads and sends.
 
 This mode is less locked down than `roastbot roast`. The agent there has no shell at all. In Claude Code, the
 skill tells Claude never to change Azure or run the fix commands, and Claude Code's permission prompts still apply
@@ -132,8 +134,8 @@ login if that matters. The persona in `plugins/roastbot/skills/roast/SKILL.md` m
 
 To pick up new releases, run `/plugin marketplace update roastbot`, or turn on auto-update for the marketplace
 under **Marketplaces** in `/plugin`. CI cuts a patch release on every push to `main` that changes the plugin or the
-package: it bumps the version, tags it and publishes a GitHub release. Changes that only touch docs or tests don't
-cut a release.
+package: it bumps the version, refreshes the bundled code, tags it and publishes a GitHub release. Changes that only
+touch docs or tests don't cut a release.
 
 ## Development
 

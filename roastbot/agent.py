@@ -116,6 +116,7 @@ def azure_mcp(args: list[str]) -> dict:
 		"type": "stdio",
 		"command": "uvx",
 		"args": ["--from", AZMCP_VERSION, "azmcp", "server", "start", *args],
+		"env": {"AZURE_MCP_COLLECT_TELEMETRY": "false"},  # Azure MCP sends usage telemetry to Microsoft by default
 	}
 
 

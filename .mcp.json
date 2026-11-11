@@ -4,11 +4,28 @@
       "type": "stdio",
       "command": "uvx",
       "args": [
-        "--from", "msmcp-azure==3.0.0", "azmcp", "server", "start", "--read-only",
-        "--mode", "all",
-        "--namespace", "compute", "--namespace", "monitor", "--namespace", "pricing",
-        "--namespace", "advisor", "--namespace", "group"
-      ]
+        "--from",
+        "msmcp-azure==3.0.0",
+        "azmcp",
+        "server",
+        "start",
+        "--read-only",
+        "--mode",
+        "all",
+        "--namespace",
+        "compute",
+        "--namespace",
+        "monitor",
+        "--namespace",
+        "pricing",
+        "--namespace",
+        "advisor",
+        "--namespace",
+        "group"
+      ],
+      "env": {
+        "AZURE_MCP_COLLECT_TELEMETRY": "false"
+      }
     }
   }
 }

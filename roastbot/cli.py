@@ -18,7 +18,9 @@ import sys
 import time
 from pathlib import Path
 
-from . import agent, cloud, demo, guard, report, scan
+# agent and demo are imported only by their own commands. scan and report run without the Agent SDK, and the Claude Code
+# plugin bundles just the read-only modules (see scripts/bump_version.py).
+from . import cloud, guard, report, scan
 
 
 def main(argv=None) -> int:
@@ -73,6 +75,8 @@ def main(argv=None) -> int:
 		print(f"Scope: {scan.scope_label(subscriptions)}", file=sys.stderr)
 
 	if args.command == "roast":
+		from . import agent
+
 		if args.guard and (reason := guard.unavailable_reason()):
 			print(f"Content check unavailable: {reason}. The report will be marked UNCHECKED.", file=sys.stderr)
 		started = time.time()
@@ -91,6 +95,8 @@ def main(argv=None) -> int:
 	elif args.command == "report":
 		print(report.finalize(out, open_browser=args.open))
 	elif args.command == "demo":
+		from . import demo
+
 		return (
 			demo.plant(args.resource_group, args.location)
 			if args.action == "plant"

@@ -176,7 +176,7 @@ async def roast(task: str, tools: agent.RoastTools, model: str | None) -> None:
 	client = make_client()
 	server = agent.azure_mcp_server()
 	# Pass the full environment: mcp's default strips AZURE_* (managed identity, tenant) that Azure MCP needs.
-	params = StdioServerParameters(command=server["command"], args=server["args"], env=dict(os.environ))
+	params = StdioServerParameters(command=server["command"], args=server["args"], env={**os.environ, **server["env"]})
 	async with stdio_client(params) as (read, write), ClientSession(read, write) as session:
 		await session.initialize()
 		registry = {**mcp_tools(session, await list_mcp_tools(session)), **roast_tools(tools)}

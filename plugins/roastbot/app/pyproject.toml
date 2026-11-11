@@ -1,0 +1,23 @@
+# The read-only slice of roastbot that the Claude Code plugin runs: scan and report, no agent, no demo.
+# Generated from the repo root by scripts/bump_version.py at every release. Don't edit roastbot/ here.
+[project]
+name = "roastbot-plugin"
+version = "0.2.2"
+description = "RoastBot's read-only Azure waste scan and report, bundled with the RoastBot Claude Code plugin"
+requires-python = ">=3.11"
+license = "Apache-2.0"
+dependencies = [
+    "azure-identity>=1.17",
+    "azure-mgmt-resourcegraph>=8.0",
+    "requests>=2.31",
+]
+
+[project.scripts]
+roastbot = "roastbot.cli:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["roastbot"]
