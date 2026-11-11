@@ -120,13 +120,6 @@ pytest discovery and debug configurations (`roast --demo`, `scan --demo`, `repor
 `.claude/settings.json` pre-approves safe commands and asks before anything destructive, and `.mcp.json` attaches
 a read-only Azure MCP server. CI (`.github/workflows/ci.yml`) runs lint, format check and tests.
 
-## Live demo
-1. The evening before: `uv run roastbot demo plant` (sandbox subscription, ~$0.30/h). It plants a disk, IPs, NICs,
-   a stopped VM, an idle VM and a snapshot. There's no App Service plan, because the demo subscription has no quota for one.
-2. Demo: `uv run roastbot roast --demo`. Optional encore: someone runs the suggested `az disk delete ...` for the P30
-   disk, then `uv run roastbot scan --demo` (seconds, no LLM). team-data jumps onto Savings Heroes.
-3. After: `uv run roastbot demo cleanup`.
-
 ## Caveats
 
 - Costs are pay-as-you-go list prices (disks and IPs from an East US table), not invoice amounts.
