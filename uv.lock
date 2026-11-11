@@ -1077,7 +1077,7 @@ wheels = [
 
 [[package]]
 name = "roastbot"
-version = "0.2.1"
+version = "0.2.2"
 source = { editable = "." }
 dependencies = [
     { name = "azure-identity" },

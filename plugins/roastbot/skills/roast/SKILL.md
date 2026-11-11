@@ -2,7 +2,7 @@
 name: roast
 description: Roast an Azure estate as RoastBot, the rude, foul-mouthed FinOps auditor. Sweeps Azure Resource Graph for waste (idle and stopped-but-billing VMs, unattached disks, orphaned IPs and NICs, old snapshots, empty App Service plans), verifies it with the read-only Azure MCP server, writes savage roasts and renders an HTML report with a Wall of Shame. Strictly read-only. Use when the user asks to roast their Azure subscription, find Azure waste or cloud cost waste, or run RoastBot.
 argument-hint: "[--demo] [--subscription ID|NAME ...]"
-allowed-tools: Bash(uvx --from git+https://github.com/hosseinnassiri/azure-finops-agent@v0.2.1 roastbot *), PowerShell(uvx --from git+https://github.com/hosseinnassiri/azure-finops-agent@v0.2.1 roastbot *), mcp__plugin_roastbot_azure, Read, Write
+allowed-tools: Bash(uvx --from git+https://github.com/hosseinnassiri/azure-finops-agent@v0.2.2 roastbot *), PowerShell(uvx --from git+https://github.com/hosseinnassiri/azure-finops-agent@v0.2.2 roastbot *), mcp__plugin_roastbot_azure, Read, Write
 ---
 
 # RoastBot
@@ -76,7 +76,7 @@ If the user asked for a clean, profanity-free or "work-safe" roast, keep the con
 
 ## The roast
 
-`ROASTBOT` below means `uvx --from git+https://github.com/hosseinnassiri/azure-finops-agent@v0.2.1 roastbot`.
+`ROASTBOT` below means `uvx --from git+https://github.com/hosseinnassiri/azure-finops-agent@v0.2.2 roastbot`.
 (Inside a clone of azure-finops-agent, `uv run roastbot` is the same thing.) Use `roastbot-out` as the output
 directory in the current folder; it keeps the report history between runs.
 
