@@ -134,7 +134,7 @@ a read-only Azure MCP server. CI (`.github/workflows/ci.yml`) runs lint, format 
   `THRESHOLD` in `roastbot/guard.py` hasn't been tuned on live roasts yet. TypeSafe says it doesn't train on user data.
 - With `--provider openai`, Azure OpenAI's content filter may block the profane persona, and some models refuse it.
   RoastBot stops cleanly and renders what it has. Ask for a deployment with a looser filter, or tone down `PERSONA`.
-- Azure MCP is pinned to `msmcp-azure==2.0.5` (`roastbot/agent.py` and `.mcp.json`). Tool names change between releases.
+- Azure MCP is pinned to `msmcp-azure==3.0.0` (`roastbot/agent.py` and `.mcp.json`). Tool names change between releases.
 
 ## Roadmap
 

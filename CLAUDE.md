@@ -39,6 +39,6 @@ It's a contest and demo project, and the first slice of a broader infrastructure
 
 ## Tooling notes
 - `.mcp.json` gives Claude Code sessions in this repo the same read-only Azure MCP server the agent uses.
-- Azure MCP is pinned (`msmcp-azure==2.0.5`) in both `roastbot/agent.py` and `.mcp.json`. Bump them together.
+- Azure MCP is pinned (`msmcp-azure==3.0.0`) in both `roastbot/agent.py` and `.mcp.json`. Bump them together.
 - The demo subscription has zero App Service quota, and East US often lacks capacity for small VM sizes.
   `demo plant` defaults to canadacentral and falls back through `VM_SIZES`.

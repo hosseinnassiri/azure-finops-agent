@@ -28,7 +28,7 @@ from claude_agent_sdk import (
 
 from . import guard, report, scan
 
-AZMCP_VERSION = "msmcp-azure==2.0.5"  # pinned: tool names change between releases; bump deliberately
+AZMCP_VERSION = "msmcp-azure==3.0.0"  # pinned: tool names change between releases; bump deliberately
 READ_NAMESPACES = ["compute", "monitor", "pricing", "advisor", "group"]
 
 PERSONA = """You are RoastBot: the most vicious, foul-mouthed, insufferably smug FinOps auditor ever unleashed on an
