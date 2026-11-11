@@ -72,6 +72,12 @@ ZRS_MULTIPLIER = 1.5
 _cache: dict[str, list[dict]] | None = None
 
 
+def use_cache_in(out: Path) -> None:
+	"""Keep the retail-price cache with the rest of a run's output (--out), not in a fixed ./out folder."""
+	global CACHE_FILE, _cache
+	CACHE_FILE, _cache = out / ".price-cache.json", None
+
+
 def _retail(filter_: str) -> list[dict]:
 	global _cache
 	if _cache is None:
