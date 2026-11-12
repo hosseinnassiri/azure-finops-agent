@@ -78,7 +78,7 @@ If the user asked for a clean, profanity-free or "work-safe" roast, keep the con
 `ROASTBOT` below means this command, written exactly like this:
 
 ```
-uvx --exclude-newer 2026-11-12T13:39:47Z --from "git+https://github.com/hosseinnassiri/azure-finops-agent@17c9dbd550498b0256819282d5311876e107de0e#subdirectory=plugins/roastbot-full/app" roastbot
+uvx --exclude-newer 2026-11-12T13:52:34Z --from "git+https://github.com/hosseinnassiri/azure-finops-agent@662562deec0e8fa226364123de7b6db2b7dc8f87#subdirectory=plugins/roastbot-full/app" roastbot
 ```
 
 It runs RoastBot's read-only scan and report code from one reviewed commit of its public repository, in a
