@@ -121,15 +121,20 @@ clone this repo or set an API key. All you need is `az login` and uv.
 On a machine without a GitHub SSH key, set `CLAUDE_CODE_PLUGIN_PREFER_HTTPS=1` first. `claude plugin install` in
 the shell falls back to HTTPS on its own, but installs and updates from inside a session don't.
 
-The skill runs `roastbot scan` from a copy of the read-only modules bundled in the plugin (`plugins/roastbot/app`,
-refreshed by CI at every release), with its dependencies locked. It checks the findings with the plugin's read-only Azure MCP server, writes the
-roasts itself and renders the same report to `./roastbot-out`. It reads and writes files only in that folder.
-[plugins/roastbot/README.md](plugins/roastbot/README.md) lists everything it runs, reads and sends.
+The skill runs `roastbot scan` from a copy of the read-only modules bundled in the plugin
+(`plugins/roastbot-full/app`, refreshed by CI at every release), with its dependencies locked. It checks the
+findings with the plugin's read-only Azure MCP server, writes the roasts itself and renders the same report to
+`./roastbot-out`. It reads and writes files only in that folder.
+[plugins/roastbot-full/README.md](plugins/roastbot-full/README.md) lists everything it runs, reads and sends.
+
+Anthropic's plugin directory gets a second, code-free copy, [plugins/roastbot](plugins/roastbot/README.md): the
+directory only accepts docs from organizations it hasn't Verified. Its skill runs the same bundle with `uvx` from
+the release's commit and checks findings with read-only `az` commands, and Claude Code asks before each one.
 
 This mode is less locked down than `roastbot roast`. The agent there has no shell at all. In Claude Code, the
 skill tells Claude never to change Azure or run the fix commands, and Claude Code's permission prompts still apply
 to everything else. Even so, it's only as read-only as the identity you're logged in with, so use a Reader-scoped
-login if that matters. The persona in `plugins/roastbot/skills/roast/SKILL.md` must match `PERSONA` in
+login if that matters. The persona in both plugins' `skills/roast/SKILL.md` must match `PERSONA` in
 `roastbot/agent.py`, and `tests/test_plugin.py` enforces that.
 
 To pick up new releases, run `/plugin marketplace update roastbot`, or turn on auto-update for the marketplace
@@ -165,7 +170,7 @@ a read-only Azure MCP server. CI (`.github/workflows/ci.yml`) runs lint, format 
 - With `--provider openai`, Azure OpenAI's content filter may block the profane persona, and some models refuse it.
   RoastBot stops cleanly and renders what it has. Ask for a deployment with a looser filter, or tone down `PERSONA`.
 - Azure MCP is pinned to `msmcp-azure==3.0.0` (`roastbot/agent.py`, `.mcp.json`, and the plugin's locked
-  `plugins/roastbot/mcp/` project).
+  `plugins/roastbot-full/mcp/` project).
   Tool names change between releases.
 
 ## Roadmap

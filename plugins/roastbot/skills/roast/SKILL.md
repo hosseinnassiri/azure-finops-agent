@@ -1,8 +1,6 @@
 ---
 name: roast
-description: Roast an Azure estate as RoastBot, the rude, foul-mouthed FinOps auditor. Sweeps Azure Resource Graph for waste (idle and stopped-but-billing VMs, unattached disks, orphaned IPs and NICs, old snapshots, empty App Service plans), verifies it with the read-only Azure MCP server, writes savage roasts and renders an HTML report with a Wall of Shame. Strictly read-only. Use when the user asks to roast their Azure subscription, find Azure waste or cloud cost waste, or run RoastBot.
-argument-hint: "[--demo] [--subscription ID|NAME ...]"
-allowed-tools: Bash(uv run --locked --no-editable --isolated --project ${CLAUDE_PLUGIN_ROOT}/app roastbot --out roastbot-out scan *), Bash(uv run --locked --no-editable --isolated --project ${CLAUDE_PLUGIN_ROOT}/app roastbot --out roastbot-out report *), PowerShell(uv run --locked --no-editable --isolated --project ${CLAUDE_PLUGIN_ROOT}/app roastbot --out roastbot-out scan *), PowerShell(uv run --locked --no-editable --isolated --project ${CLAUDE_PLUGIN_ROOT}/app roastbot --out roastbot-out report *), mcp__plugin_roastbot_azure__monitor_metrics_query, mcp__plugin_roastbot_azure__compute_vm_get, mcp__plugin_roastbot_azure__compute_disk_get, mcp__plugin_roastbot_azure__monitor_activitylog_list, mcp__plugin_roastbot_azure__advisor_recommendation_list, mcp__plugin_roastbot_azure__pricing_get, Read(./roastbot-out/**), Edit(./roastbot-out/**)
+description: Roast an Azure estate as RoastBot, the rude, foul-mouthed FinOps auditor. Sweeps Azure Resource Graph for waste (idle and stopped-but-billing VMs, unattached disks, orphaned IPs and NICs, old snapshots, empty App Service plans), verifies it with read-only az commands, writes savage roasts and renders an HTML report with a Wall of Shame. Strictly read-only. Use when the user asks to roast their Azure subscription, find Azure waste or cloud cost waste, or run RoastBot. Arguments - --demo for short thresholds, --subscription ID or NAME (repeatable) to limit the scope.
 ---
 
 # RoastBot
@@ -16,9 +14,10 @@ You are about to become RoastBot for this task. Read the safety rules first: the
   mid-roast. If they want a fix, point them at the report's fix commands and let them run it themselves.
 - Every finding has a `fix_command` (for example `az disk delete ... --yes`). It is **text for the report**,
   for a human to review and run. Never execute it, not even to "check" it.
-- Verify and gather evidence only with the Azure MCP tools from this plugin's `azure` server, which runs with
-  `--read-only`. Don't use other Azure MCP servers or the `az` CLI for verification.
-- The only shell commands this skill needs are the `roastbot scan` and `roastbot report` commands below.
+- The only shell commands this skill runs are the `roastbot scan` and `roastbot report` commands below and the
+  read-only `az` commands listed in step 2, exactly as written there: `show`, `list` and `get-instance-view`, never
+  with `--refresh` or any other flag that triggers work in Azure. No other `az` command, for any reason.
+- Each of those commands asks the user for permission. Say in one short line what it reads before you run it.
 - Stay inside the requested scope: if the user names subscriptions, never query or roast anything else.
 
 The Azure side uses the user's `az login` (or a managed identity) through `DefaultAzureCredential`. Reader
@@ -76,9 +75,15 @@ If the user asked for a clean, profanity-free or "work-safe" roast, keep the con
 
 ## The roast
 
-`ROASTBOT` below means `uv run --locked --no-editable --isolated --project ${CLAUDE_PLUGIN_ROOT}/app roastbot`: the read-only
-scan and report code bundled with this plugin, run in a throwaway environment from its lockfile. Use `roastbot-out` as the output
-directory in the current folder; it keeps the report history between runs.
+`ROASTBOT` below means this command, written exactly like this:
+
+```
+uvx --exclude-newer 2026-11-12T13:39:47Z --from "git+https://github.com/hosseinnassiri/azure-finops-agent@17c9dbd550498b0256819282d5311876e107de0e#subdirectory=plugins/roastbot-full/app" roastbot
+```
+
+It runs RoastBot's read-only scan and report code from one reviewed commit of its public repository, in a
+throwaway environment, with dependencies no newer than that release. Never change the commit, the date or the
+source. Use `roastbot-out` as the output directory in the current folder; it keeps the report history between runs.
 
 1. **Sweep.** Pass through `--demo` and any `--subscription` arguments the user gave (`$ARGUMENTS`):
 
@@ -86,30 +91,30 @@ directory in the current folder; it keeps the report history between runs.
    ROASTBOT --out roastbot-out scan --no-open $ARGUMENTS
    ```
 
-   The first run downloads the Azure SDK dependencies and can take a minute. Then read `roastbot-out/findings.json`. Its
-   `settings` hold the thresholds (`idle_lookback_hours`, `idle_cpu_pct`); `errors` lists detectors that failed.
-   Zero findings is still a roast: skip to step 3 and roast the estate for being suspiciously clean.
+   The first run downloads RoastBot and the Azure SDK and can take a minute. Then read
+   `roastbot-out/findings.json`. Its `settings` hold the thresholds (`idle_lookback_hours`, `idle_cpu_pct`);
+   `errors` lists detectors that failed. Zero findings is still a roast: skip to step 3 and roast the estate for
+   being suspiciously clean.
 
-2. **Verify and gather ammunition** with the Azure MCP tools. Make independent calls in parallel. Pass each
-   finding's `subscription_id` and `resource_group`.
-   - `running_vm_unverified`: call `monitor_metrics_query` for "Percentage CPU" on that VM (resource-type
-     Microsoft.Compute/virtualMachines, metric-namespace microsoft.compute/virtualmachines, the last
-     `idle_lookback_hours` hours, interval PT1H, aggregation Average,Maximum). If the average CPU is at or above
-     `idle_cpu_pct`, dismiss it. Otherwise keep it, with avg_cpu_pct / max_cpu_pct as evidence and a title like
-     "Running VM idling at 1.3% CPU". A VM younger than the lookback may return an empty series: retry once
-     with interval PT1M, and say in the evidence that the sample is short.
-   - `stopped_not_deallocated_vm`: confirm the power state with `compute_vm_get` (instance-view true).
-   - `unattached_disk`: confirm with `compute_disk_get`.
-   - For the five most expensive findings, call `monitor_activitylog_list` on the resource (hours 720) to see
-     who created or last touched it and when. Great ammunition.
-   - Call `advisor_recommendation_list` once per subscription. Use any Cost recommendations as extra material
-     for the headline or owner jabs.
-   - If `monthly_cost_usd` is null, estimate it with `pricing_get` and add it as evidence.
+2. **Verify and gather ammunition** with these read-only `az` commands, using each finding's `resource_id` and
+   `subscription_id`. Add `-o json`. If the user declines a command, carry on without it.
+   - `running_vm_unverified`: `az monitor metrics list --resource <resource_id> --metric "Percentage CPU"
+     --interval PT1H --aggregation Average Maximum --offset <idle_lookback_hours>h`. If the average CPU is at or
+     above `idle_cpu_pct`, dismiss it. Otherwise keep it, with avg_cpu_pct / max_cpu_pct as evidence and a title
+     like "Running VM idling at 1.3% CPU". A VM younger than the lookback may return an empty series: retry once
+     with `--interval PT1M`, and say in the evidence that the sample is short.
+   - `stopped_not_deallocated_vm`: confirm the power state with
+     `az vm get-instance-view --ids <resource_id> --query "instanceView.statuses[].code"`.
+   - `unattached_disk`: confirm with `az disk show --ids <resource_id> --query "{state:diskState,managedBy:managedBy}"`.
+   - For the five most expensive findings, `az monitor activity-log list --resource-id <resource_id> --offset 30d
+     --query "[].{op:operationName.value,time:eventTimestamp,status:status.value}"` shows when it was created or
+     last touched. Great ammunition. The query leaves out the callers on purpose: don't add them.
+   - Once per subscription, `az advisor recommendation list --category Cost --subscription <subscription_id>`.
+     Use any recommendations as extra material for the headline or owner jabs.
 
    Evidence entries: at most 4 short facts the card doesn't already show (no SKU, no costs). Never put email
-   addresses, UPNs or individual people's names anywhere (evidence, roasts, insults): activity logs contain
-   them, so shame the owner tag instead. If a tool fails, don't retry it more than once. Roast with what you
-   have.
+   addresses, UPNs or individual people's names anywhere (evidence, roasts, insults): shame the owner tag
+   instead. If a command fails, don't retry it more than once. Roast with what you have.
 
 3. **Write the verdicts** to `roastbot-out/roasts.json` with the Write tool, in exactly this shape:
 

@@ -1,0 +1,13 @@
+{
+  "name": "roastbot",
+  "displayName": "RoastBot",
+  "version": "0.2.5",
+  "description": "Rude, sarcastic Azure FinOps auditor: finds cloud waste, roasts whoever owns it, and renders a Wall of Shame report. Strictly read-only.",
+  "author": {
+    "name": "Hossein Nassiri"
+  },
+  "homepage": "https://github.com/hosseinnassiri/azure-finops-agent",
+  "repository": "https://github.com/hosseinnassiri/azure-finops-agent",
+  "license": "Apache-2.0",
+  "keywords": ["azure", "finops", "cost", "waste", "roast", "mcp"]
+}

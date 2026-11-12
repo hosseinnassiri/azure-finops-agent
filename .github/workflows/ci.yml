@@ -14,16 +14,17 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
       - run: uv sync --locked --all-extras
-      - run: uv lock --check --project plugins/roastbot/app
-      - run: uv lock --check --project plugins/roastbot/mcp
+      - run: uv lock --check --project plugins/roastbot-full/app
+      - run: uv lock --check --project plugins/roastbot-full/mcp
       - run: uv run ruff check .
       - run: uv run ruff format --check .
       - run: uv run pytest -q
 
-  # Publishes the Claude Code plugin. Both marketplaces read this repo, so "publish" means: bump the version (users
-  # only get a new plugin copy when it changes), copy the read-only scan/report code into plugins/roastbot/app (the
-  # skill runs that bundle), tag v<version> and fast-forward the `release` branch (what Anthropic's directory
-  # tracks). See CLAUDE.md "Releases".
+  # Publishes both Claude Code plugins. Both marketplaces read this repo, so "publish" means: bump the version (users
+  # only get a new plugin copy when it changes), copy the read-only scan/report code into plugins/roastbot-full/app
+  # (the full skill runs that bundle), pin the directory's code-free plugin (plugins/roastbot) to that commit (its
+  # skill runs the same bundle with uvx), tag v<version> and fast-forward the `release` branch (what Anthropic's
+  # directory tracks). See CLAUDE.md "Releases".
   release:
     needs: check
     if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
@@ -66,6 +67,10 @@ jobs:
           version=$(uv run --no-project python scripts/bump_version.py $how)
           git add -A plugins pyproject.toml uv.lock
           git diff --cached --quiet || git commit -m "Release v$version [skip ci]"
+          # The directory's plugin runs the bundle from a commit: the one just made, which holds this release's bundle.
+          uv run --no-project python scripts/bump_version.py --pin "$(git rev-parse HEAD)"
+          git add plugins/roastbot
+          git commit -m "Pin the directory plugin to v$version [skip ci]"
 
       - name: Validate the release
         if: steps.plan.outputs.action != 'none'
@@ -73,11 +78,12 @@ jobs:
           ROASTBOT_RELEASE: "1" # also checks that the bundle matches the source
         run: |
           uv sync --locked --all-extras
-          uv lock --check --project plugins/roastbot/app
+          uv lock --check --project plugins/roastbot-full/app
           uv run pytest -q tests/test_plugin.py
           npx -y @anthropic-ai/claude-code@2.1.322 plugin validate --strict .
+          npx -y @anthropic-ai/claude-code@2.1.322 plugin validate --strict plugins/roastbot-full
           npx -y @anthropic-ai/claude-code@2.1.322 plugin validate --strict plugins/roastbot
-          cd "$(mktemp -d)" && uv run --locked --no-editable --isolated --project "$GITHUB_WORKSPACE/plugins/roastbot/app" roastbot --help
+          cd "$(mktemp -d)" && uv run --locked --no-editable --isolated --project "$GITHUB_WORKSPACE/plugins/roastbot-full/app" roastbot --help
 
       - name: Tag, push and create the GitHub release
         if: steps.plan.outputs.action != 'none'
@@ -89,3 +95,10 @@ jobs:
           git push origin HEAD:main "v$version"   # fails if main moved meanwhile; the next push releases it
           git push origin HEAD:release
           gh release create "v$version" --title "RoastBot $version" --generate-notes
+
+      - name: Run the directory plugin's pinned command
+        if: steps.plan.outputs.action != 'none'
+        run: |
+          # Now that the pinned commit is on GitHub: run exactly what the directory's skill runs.
+          roastbot=$(grep -m1 '^uvx ' plugins/roastbot/skills/roast/SKILL.md)
+          cd "$(mktemp -d)" && eval "$roastbot --help"

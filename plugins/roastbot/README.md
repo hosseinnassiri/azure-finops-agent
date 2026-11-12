@@ -5,8 +5,14 @@ A rude, sarcastic Azure FinOps auditor for Claude Code. RoastBot sweeps your Azu
 plans), checks each finding against live Azure data, and writes a savage roast for every one. The result is an
 HTML report with dollar figures, a Wall of Shame for the worst-offending teams and suggested fix commands.
 
-**Claude Code only.** RoastBot needs a local shell, [uv](https://docs.astral.sh/uv/) and an Azure login, so it
-doesn't work on claude.ai or in Cowork.
+**Claude Code only.** RoastBot needs a local shell, [uv](https://docs.astral.sh/uv/), the
+[Azure CLI](https://learn.microsoft.com/cli/azure/install-azure-cli) and an Azure login, so it doesn't work on
+claude.ai or in Cowork.
+
+This plugin is instructions only: it contains no code and pre-approves nothing, so Claude Code asks you before every
+command it runs. The same skill with its code bundled, a read-only Azure MCP server and the read-only commands
+pre-approved is in RoastBot's own marketplace: `/plugin marketplace add hosseinnassiri/azure-finops-agent`, then
+`/plugin install roastbot@roastbot`.
 
 ## Use
 
@@ -43,12 +49,12 @@ none of this demo code.
   newer than the idle thresholds. Try `--demo`, or pass `--subscription` explicitly.
 - **`uv` not found:** install it from <https://docs.astral.sh/uv/getting-started/installation/>, then restart
   Claude Code.
-- **The first run is slow:** `uv` downloads the Azure SDK and the Azure MCP Server once. Later runs reuse its cache.
-- **A permission prompt for an Azure tool:** the skill pre-approves six read-only tools. If Claude asks for another
-  one, it's outside the skill's normal steps, and you can decline.
-- **The `azure` MCP server fails to start:** run
-  `uv run --locked --isolated --project <plugin folder>/mcp azmcp --version` in a terminal to see the error. The
-  plugin folder is `~/.claude/plugins/cache/roastbot/roastbot/<version>`.
+- **The first run is slow:** `uv` downloads RoastBot and the Azure SDK once. Later runs reuse its cache.
+- **Permission prompts:** every command asks first. The skill runs only `uvx ... roastbot scan`, `uvx ... roastbot
+  report` and the read-only `az` commands it lists (`az monitor metrics list`, `az vm get-instance-view`,
+  `az disk show`, `az monitor activity-log list`, `az advisor recommendation list`). Decline anything else.
+  Declining a check doesn't stop the roast: RoastBot works with what it has.
+- **`az` not found:** install the Azure CLI, run `az login`, then restart Claude Code.
 
 ## Support, security and privacy
 
@@ -72,28 +78,24 @@ tags. They never name individual people, and they stay away from slurs, protecte
 
 ## What it runs, reads and sends
 
-- **Runs** the scan and report code bundled in this plugin's `app/` folder, with
-  `uv run --locked --no-editable --isolated --project <plugin>/app roastbot ... scan` (and `... report`). The bundle
-  holds only the read-only modules: no agent, and none of the repo's demo code that creates and deletes Azure
-  resources. `uv` installs its dependencies (the Azure SDK for Python and `requests`) from PyPI, pinned by
-  `app/uv.lock`, into a throwaway environment, so nothing is written into the plugin folder. The skill pre-approves
-  exactly those two commands.
-- **Starts** the Azure MCP Server (`msmcp-azure` 3.0.0 from PyPI, pinned by hash in `mcp/uv.lock`) with
-  `uv run --locked --isolated --project <plugin>/mcp azmcp server start --read-only`, limited to its compute,
-  monitor, pricing, advisor and group tools, with its usage telemetry to Microsoft turned off
-  (`AZURE_MCP_COLLECT_TELEMETRY=false`). The skill pre-approves exactly the six read-only tools it calls:
-  `monitor_metrics_query`, `compute_vm_get`, `compute_disk_get`, `monitor_activitylog_list`,
-  `advisor_recommendation_list` and `pricing_get`.
-- **Uses your Azure login.** The bundled scan and the Azure MCP Server both authenticate with
-  `DefaultAzureCredential` (your `az login` or a managed identity) and send that token only to Azure.
+- **Runs** RoastBot's read-only scan and report code with
+  `uvx --from "git+https://github.com/hosseinnassiri/azure-finops-agent@<commit>#subdirectory=plugins/roastbot-full/app" roastbot ... scan`
+  (and `... report`). The commit is fixed in the skill and changes only with a new plugin version. That folder holds
+  only the read-only modules: no agent, and none of the repo's demo code that creates and deletes Azure resources.
+  `uv` downloads the code from GitHub and its dependencies (the Azure SDK for Python and `requests`) from PyPI into
+  its own cache, taking no package published after that release (`--exclude-newer`).
+- **Runs read-only `az` commands** to check findings: `az monitor metrics list`, `az vm get-instance-view`,
+  `az disk show`, `az monitor activity-log list` and `az advisor recommendation list`. Claude Code asks before each.
+- **Uses your Azure login.** The scan authenticates with `DefaultAzureCredential` and the `az` commands with your
+  `az login`. Both send that token only to Azure.
 - **Reads from Azure**, using your credentials: resource metadata through Azure Resource Graph, CPU metrics,
   activity logs for the most expensive findings, Advisor recommendations and retail prices. Activity logs contain
   the email addresses of the people who changed resources. RoastBot uses them only to see when a resource was
   created or changed, and keeps names and email addresses out of everything it writes.
 - **Writes** only to `./roastbot-out/`: `findings.json`, `roasts.json`, `report.html`, a `history/` folder that
-  tracks progress between runs, and a cache of public Azure prices. The skill pre-approves reading and writing in that folder and nowhere else.
+  tracks progress between runs, and a cache of public Azure prices.
 - **Sends** nothing anywhere else. Its only network traffic is to Azure's APIs, the public Azure retail prices
-  API (`prices.azure.com`) and PyPI for the dependency downloads. It has no telemetry of its own. The roasts are
+  API (`prices.azure.com`), and GitHub and PyPI for the downloads. It has no telemetry of its own. The roasts are
   written by the Claude session you're already using.
 - **The report** loads its fonts from Google Fonts when you open it in a browser, which is a request to Google.
   It contains nothing else remote.

@@ -7,8 +7,8 @@ updates:
   - package-ecosystem: uv
     directories:
       - /
-      - /plugins/roastbot/app
-      - /plugins/roastbot/mcp
+      - /plugins/roastbot-full/app
+      - /plugins/roastbot-full/mcp
     schedule:
       interval: weekly
     ignore:

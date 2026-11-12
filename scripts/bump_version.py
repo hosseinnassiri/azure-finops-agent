@@ -2,23 +2,31 @@
 
 uv run --no-project python scripts/bump_version.py patch    # 0.2.0 -> 0.2.1 (also: minor, major, or 1.4.0)
 uv run --no-project python scripts/bump_version.py --sync   # refresh the bundle only, keep the version
+uv run --no-project python scripts/bump_version.py --pin <commit sha>   # point the directory plugin at a commit
 
-A bump updates pyproject.toml, plugins/roastbot/.claude-plugin/plugin.json and plugins/roastbot/app/pyproject.toml,
-then syncs. A sync copies the read-only modules in BUNDLE into plugins/roastbot/app/roastbot/ and relocks it. CI runs
-this at every release, so the plugin always ships the code of the version it claims. Prints the version.
+A bump updates pyproject.toml, both plugins' plugin.json and plugins/roastbot-full/app/pyproject.toml, then syncs.
+A sync copies the read-only modules in BUNDLE into plugins/roastbot-full/app/roastbot/ and relocks it. CI runs this
+at every release, so the plugin always ships the code of the version it claims. Prints the version.
+
+The directory plugin (plugins/roastbot) ships no code: its skill runs the bundle with uvx from a pinned commit. A pin
+writes that commit, and today's date as uv's --exclude-newer cutoff, into its SKILL.md. CI pins each release commit.
 """
 
 import re
 import shutil
 import subprocess
 import sys
+from datetime import UTC, datetime
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 PYPROJECT = ROOT / "pyproject.toml"
-PLUGIN = ROOT / "plugins" / "roastbot"
-PLUGIN_JSON = PLUGIN / ".claude-plugin" / "plugin.json"
+PLUGIN = ROOT / "plugins" / "roastbot-full"
+DIRECTORY = ROOT / "plugins" / "roastbot"
+PLUGIN_JSONS = [PLUGIN / ".claude-plugin" / "plugin.json", DIRECTORY / ".claude-plugin" / "plugin.json"]
 APP = PLUGIN / "app"
+SKILL = DIRECTORY / "skills" / "roast" / "SKILL.md"
+PIN_RE = re.compile(r"--exclude-newer \S+ (--from \"git\+https://github\.com/[\w./-]+)@[0-9a-f]{40}#")
 VERSION_RE = re.compile(r'^version = "(\d+)\.(\d+)\.(\d+)"', re.M)
 # What the skill runs: scan and report. No agent engines (they need the SDKs) and no demo (it creates and deletes
 # Azure resources), so the plugin carries only read-only code.
@@ -62,15 +70,30 @@ def sync() -> None:
 	subprocess.run(["uv", "lock", "--quiet", "--project", str(APP)], check=True)
 
 
+def pin(sha: str) -> None:
+	if not re.fullmatch(r"[0-9a-f]{40}", sha):
+		raise SystemExit(f"expected a full commit sha, got {sha!r}")
+	text = SKILL.read_text(encoding="utf-8")
+	cutoff = datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
+	text, n = PIN_RE.subn(lambda m: f"--exclude-newer {cutoff} {m.group(1)}@{sha}#", text)
+	if n != 1:
+		raise SystemExit(f"{SKILL.relative_to(ROOT)}: expected 1 pinned uvx command, found {n}")
+	SKILL.write_text(text, encoding="utf-8", newline="")
+
+
 def main() -> int:
 	how = sys.argv[1] if len(sys.argv) > 1 else "patch"
+	if how == "--pin":
+		pin(sys.argv[2] if len(sys.argv) > 2 else "")
+		return 0
 	if how != "--sync":
 		old = current_version()
 		new = next_version(tuple(int(p) for p in old.split(".")), how)
 		if new == old:
 			raise SystemExit(f"already at {old}")
 		replace(PYPROJECT, f'version = "{old}"', f'version = "{new}"')
-		replace(PLUGIN_JSON, f'"version": "{old}"', f'"version": "{new}"')
+		for plugin_json in PLUGIN_JSONS:
+			replace(plugin_json, f'"version": "{old}"', f'"version": "{new}"')
 		subprocess.run(["uv", "lock", "--quiet"], cwd=ROOT, check=True)
 	sync()
 	print(current_version())

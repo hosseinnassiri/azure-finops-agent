@@ -1,9 +1,16 @@
-"""The Claude Code plugin (plugins/roastbot) must stay in sync with the agent it mirrors."""
+"""The Claude Code plugins must stay in sync with the agent they mirror.
+
+plugins/roastbot-full is the marketplace plugin: bundled code, a read-only Azure MCP server, pre-approved tools.
+plugins/roastbot is the Anthropic directory's copy, which may only hold docs and images (the directory refuses code,
+local MCP servers and pre-approved tools from organizations it hasn't Verified): its skill runs the full plugin's
+bundle with uvx from a pinned commit.
+"""
 
 import json
 import os
 import re
 import runpy
+import subprocess
 from pathlib import Path
 
 import pytest
@@ -11,14 +18,27 @@ import pytest
 from roastbot import agent
 
 ROOT = Path(__file__).parent.parent
-PLUGIN = ROOT / "plugins" / "roastbot"
+PLUGIN = ROOT / "plugins" / "roastbot-full"
+DIRECTORY = ROOT / "plugins" / "roastbot"
+DIRECTORY_SKILL = DIRECTORY / "skills" / "roast" / "SKILL.md"
 RUN = "uv run --locked --no-editable --isolated --project ${CLAUDE_PLUGIN_ROOT}/app roastbot"
 
 
-def test_skill_persona_matches_agent():
-	skill = (PLUGIN / "skills" / "roast" / "SKILL.md").read_text(encoding="utf-8")
-	persona = re.search(r"```persona\n(.*?)```", skill, re.S).group(1)
+@pytest.mark.parametrize(
+	"skill", [PLUGIN / "skills" / "roast" / "SKILL.md", DIRECTORY_SKILL], ids=["full", "directory"]
+)
+def test_skill_persona_matches_agent(skill):
+	persona = re.search(r"```persona\n(.*?)```", skill.read_text(encoding="utf-8"), re.S).group(1)
 	assert persona == agent.PERSONA
+
+
+def test_skills_share_their_safety_rules_and_steps():
+	full = (PLUGIN / "skills" / "roast" / "SKILL.md").read_text(encoding="utf-8")
+	directory = DIRECTORY_SKILL.read_text(encoding="utf-8")
+	steps = "3. **Write the verdicts**"
+	assert full[full.index(steps) :] == directory[directory.index(steps) :]
+	first_rules = lambda text: text[text.index("## Safety rules") :].split("\n")[:7]  # noqa: E731
+	assert first_rules(full) == first_rules(directory)  # never change Azure, never run a fix_command
 
 
 def test_plugin_mcp_server_matches_agent():
@@ -43,6 +63,8 @@ def test_versions_match():
 	plugin = json.loads((PLUGIN / ".claude-plugin" / "plugin.json").read_text(encoding="utf-8"))
 	app = (PLUGIN / "app" / "pyproject.toml").read_text(encoding="utf-8")
 	assert plugin["version"] == version
+	directory = json.loads((DIRECTORY / ".claude-plugin" / "plugin.json").read_text(encoding="utf-8"))
+	assert directory == plugin  # same name, version and listing details
 	assert f'version = "{version}"' in app
 
 
@@ -85,17 +107,68 @@ def test_bundle_matches_the_source():
 		assert path.read_text(encoding="utf-8") == source, path
 
 
-def test_plugin_ships_the_license():
-	# Installs copy only plugins/roastbot, and Anthropic's directory scans only that folder.
-	assert (PLUGIN / "LICENSE").read_bytes() == (ROOT / "LICENSE").read_bytes()
+# What the directory accepts from an organization it hasn't Verified: docs and images, nothing that runs.
+ALLOWED_SUFFIXES = {".md", ".txt", ".json", ".yaml", ".yml", ".png", ".jpg", ".jpeg", ".gif", ".webp", ".ico"}
+IMAGES = {".png", ".jpg", ".jpeg", ".gif", ".webp", ".ico"}
+
+
+def test_directory_plugin_ships_nothing_that_runs():
+	files = [p for p in DIRECTORY.rglob("*") if p.is_file() and "__pycache__" not in p.parts]
+	assert files
+	for path in files:
+		assert path.suffix.lower() in ALLOWED_SUFFIXES or path.name == "LICENSE", path
+		data = path.read_bytes()
+		assert not data.startswith(b"#!"), path
+		if path.suffix.lower() not in IMAGES:
+			assert b"\x00" not in data, path
+			data.decode("utf-8")
+	assert not (DIRECTORY / ".mcp.json").exists() and not (DIRECTORY / "hooks").exists()
+	manifest = json.loads((DIRECTORY / ".claude-plugin" / "plugin.json").read_text(encoding="utf-8"))
+	assert not {"mcpServers", "hooks", "lspServers", "commands", "agents"} & set(manifest)
+
+
+def test_directory_skill_preapproves_nothing():
+	skill = DIRECTORY_SKILL.read_text(encoding="utf-8")
+	frontmatter = skill.split("---")[1]
+	assert set(re.findall(r"^([\w-]+):", frontmatter, re.M)) == {"name", "description"}
+	assert "${" not in skill  # no plugin-root paths: the plugin has no files to run
+
+
+def test_directory_skill_pins_the_bundle():
+	skill = DIRECTORY_SKILL.read_text(encoding="utf-8")
+	bump = runpy.run_path(str(ROOT / "scripts" / "bump_version.py"))
+	(command,) = re.findall(r"^uvx .*$", skill, re.M)
+	assert bump["PIN_RE"].search(command)
+	assert re.fullmatch(
+		r'uvx --exclude-newer \d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ --from "git\+https://github\.com/hosseinnassiri/'
+		r'azure-finops-agent@[0-9a-f]{40}#subdirectory=plugins/roastbot-full/app" roastbot',
+		command,
+	), command
+	assert command.count("uvx") == 1 and skill.count("git+") == 1  # one source, used through ROASTBOT
+
+
+@pytest.mark.skipif(not os.environ.get("ROASTBOT_RELEASE"), reason="the release job pins the release commit")
+def test_directory_skill_pins_this_release():
+	skill = DIRECTORY_SKILL.read_text(encoding="utf-8")
+	sha = re.search(r"@([0-9a-f]{40})#", skill).group(1)
+	same = subprocess.run(["git", "diff", "--quiet", sha, "HEAD", "--", "plugins/roastbot-full/app"], cwd=ROOT)
+	assert same.returncode == 0, f"{sha} doesn't hold this release's bundle"
+
+
+@pytest.mark.parametrize("plugin", [PLUGIN, DIRECTORY], ids=["full", "directory"])
+def test_plugin_ships_the_license(plugin):
+	# Installs copy only the plugin folder, and Anthropic's directory scans only that folder.
+	assert (plugin / "LICENSE").read_bytes() == (ROOT / "LICENSE").read_bytes()
 	plugin = json.loads((PLUGIN / ".claude-plugin" / "plugin.json").read_text(encoding="utf-8"))
 	assert plugin["license"] == "Apache-2.0"
 	assert 'license = "Apache-2.0"' in (ROOT / "pyproject.toml").read_text(encoding="utf-8")
 
 
 def test_plugin_ships_a_privacy_policy():
-	# Anthropic's directory policy requires one for software that connects to a remote service.
-	policy = (PLUGIN / "PRIVACY.md").read_text(encoding="utf-8")
-	for must in ("prices.azure.com", "Google Fonts", "AZURE_MCP_COLLECT_TELEMETRY=false", "roastbot-out"):
+	# Anthropic's directory policy requires one for software that connects to a remote service. One policy covers both.
+	policy = (DIRECTORY / "PRIVACY.md").read_text(encoding="utf-8")
+	assert (PLUGIN / "PRIVACY.md").read_text(encoding="utf-8") == policy
+	for must in ("prices.azure.com", "Google Fonts", "AZURE_MCP_COLLECT_TELEMETRY=false", "roastbot-out", "github.com"):
 		assert must in policy, must
-	assert "PRIVACY.md" in (PLUGIN / "README.md").read_text(encoding="utf-8")
+	for plugin in (PLUGIN, DIRECTORY):
+		assert "PRIVACY.md" in (plugin / "README.md").read_text(encoding="utf-8")

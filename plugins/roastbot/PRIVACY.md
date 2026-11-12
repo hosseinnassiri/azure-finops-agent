@@ -1,6 +1,7 @@
 # RoastBot privacy policy
 
-Effective 11 November 2026. This policy covers the RoastBot Claude Code plugin and the `roastbot` command-line tool
+Effective 12 November 2026. This policy covers both RoastBot Claude Code plugins (the directory's and the one in
+RoastBot's own marketplace) and the `roastbot` command-line tool
 in <https://github.com/hosseinnassiri/azure-finops-agent>, both maintained by Hossein Nassiri.
 
 ## The short version
@@ -15,6 +16,7 @@ Using the Azure identity you're signed in with (`az login` or a managed identity
 
 - **Resource metadata** from Azure Resource Graph: names, IDs, types, SKUs, sizes, regions, tags (including `owner`)
   and power states of virtual machines, disks, public IPs, network interfaces, snapshots and App Service plans.
+- **Resource details** that confirm a finding: a VM's power state, a disk's attachment state.
 - **CPU metrics** for running virtual machines, from Azure Monitor.
 - **Activity logs** for the most expensive findings, from Azure Monitor. These records include the email address
   or user principal name of whoever created or changed a resource.
@@ -32,18 +34,19 @@ people's names and email addresses out of everything it writes; it names teams b
 ## Where data goes
 
 - **Azure.** Your Azure access token goes only to Azure's APIs, which return your resource data.
-- **Claude.** In the plugin, the Claude Code session you're already using reads the scan results and Azure MCP tool
-  output and writes the roasts. That data is handled under your agreement with Anthropic, like anything else in your
+- **Claude.** In the plugins, the Claude Code session you're already using reads the scan results and the output of
+  the Azure checks (Azure MCP tools, or read-only `az` commands in the directory's plugin) and writes the roasts. That data is handled under your agreement with Anthropic, like anything else in your
   Claude Code session. RoastBot adds no other AI service.
-- **Package downloads.** `uv` downloads RoastBot's dependencies and the Azure MCP Server from PyPI. These requests
-  carry no Azure data.
+- **Package downloads.** `uv` downloads RoastBot's dependencies and the Azure MCP Server from PyPI, and the
+  directory's plugin downloads RoastBot's own code from github.com. These requests carry no Azure data.
 - **Google Fonts.** The HTML report loads its fonts from Google Fonts when you open it in a browser, so Google
   receives a standard web request (your IP address and browser details). It receives none of the report's contents.
-- **Nowhere else.** The Azure MCP Server's own usage telemetry to Microsoft is turned off
-  (`AZURE_MCP_COLLECT_TELEMETRY=false`).
+- **Nowhere else.** The Azure CLI may send its own usage telemetry to Microsoft, under your Azure CLI settings
+  (`az config set core.collect_telemetry=false` turns it off). The Azure MCP Server's own usage telemetry to
+  Microsoft is turned off (`AZURE_MCP_COLLECT_TELEMETRY=false`).
 
 The standalone command-line tool has three optional modes that send data elsewhere. Each runs only if you
-choose it, and the plugin uses none of them:
+choose it, and the plugins use none of them:
 
 - `roastbot roast` sends the scan results to the Claude model you choose, through the Claude Agent SDK.
 - `--provider openai` sends them to the OpenAI-compatible endpoint you configure instead.

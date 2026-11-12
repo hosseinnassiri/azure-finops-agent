@@ -13,9 +13,10 @@ It's a contest and demo project, and the first slice of a broader infrastructure
 - The non-Claude engine (`openai_agent.py`, `--provider openai`) can only dispatch the tools it registers: the
   Azure MCP tools (same `azure_mcp_server()`, so always `--read-only`) plus `RoastTools`. Unknown names get an error
   result. Never add a shell, file or write tool to either engine.
-- The Claude Code skill (`plugins/roastbot`) can't be sandboxed like that, so its SKILL.md carries the rules in
-  prose: never change Azure, never run a finding's `fix_command`, verify only through the plugin's `--read-only`
-  Azure MCP server. Keep those rules at the top of the skill.
+- The Claude Code skills (both plugins) can't be sandboxed like that, so each SKILL.md carries the rules in
+  prose: never change Azure, never run a finding's `fix_command`, verify only through the full plugin's `--read-only`
+  Azure MCP server or, in the directory's plugin, only the read-only `az` commands its step 2 lists. Keep those
+  rules at the top of each skill.
 - In production this runs under a Reader-scoped managed identity (picked up by `DefaultAzureCredential`
   and Azure MCP). Locally it uses `az login`.
 
@@ -31,19 +32,26 @@ It's a contest and demo project, and the first slice of a broader infrastructure
   optional `guard` extra, imported lazily, so `report.py` only uses the SDK-free `apply`
 - `roastbot/openai_agent.py`: the same agent on any OpenAI-compatible endpoint, with our own tool loop. `RoastTools` and
   `ROASTBOT_TOOLS` in `agent.py` are shared by both engines. `openai` is the optional `openai` extra
-- `plugins/roastbot/`: the Claude Code plugin (marketplace in `.claude-plugin/marketplace.json`). Its `roast` skill
-  has Claude Code play RoastBot: run the bundled `app/` (`uv run --locked --no-editable --isolated --project
-  ${CLAUDE_PLUGIN_ROOT}/app roastbot ... scan`), verify via its own `.mcp.json`, write `roasts.json`, `... report`.
-  `tests/test_plugin.py` keeps its persona, MCP server, versions, license and allowed-tools in sync with `agent.py`,
-  `.mcp.json` and `pyproject.toml`. Its `README.md` is the Anthropic directory listing and the security scan's
-  disclosure: when the plugin starts running, reading, writing or sending something new, say so there and in
-  `plugins/roastbot/PRIVACY.md` (the policy the directory requires, which also covers the CLI's optional data flows).
-  Privately reported security issues come in through `SECURITY.md`
-- `plugins/roastbot/app/roastbot/` is a generated copy of the read-only modules (`BUNDLE` in
+- Two Claude Code plugins, both named `roastbot`, with the same `roast` skill (Claude Code plays RoastBot: scan,
+  verify, write `roasts.json`, report). Shared parts (persona, safety rules, steps 3-5, plugin.json, LICENSE,
+  PRIVACY.md) must stay identical, and `tests/test_plugin.py` checks that, plus versions, MCP pins and allowed-tools:
+  - `plugins/roastbot-full/`: the one in this repo's marketplace (`.claude-plugin/marketplace.json`). Runs the
+    bundled `app/` (`uv run --locked --no-editable --isolated --project ${CLAUDE_PLUGIN_ROOT}/app roastbot ... scan`),
+    verifies via its own `.mcp.json`, and pre-approves exactly those commands and MCP tools.
+  - `plugins/roastbot/`: the Anthropic directory's (portal plugin path, tracking `release`). The directory refuses
+    code, local MCP servers and any `allowed-tools` beyond Read/Grep/Glob/LS from non-Verified organizations, so it
+    holds only Markdown, JSON, LICENSE and the icon, its frontmatter is just `name` and `description`, and Claude Code
+    asks before every command. Its skill runs the full plugin's `app/` with `uvx --exclude-newer <date> --from
+    "git+https://github.com/...@<sha>#subdirectory=plugins/roastbot-full/app"` (the release job writes the pin) and
+    verifies with read-only `az` commands. Never add a non-doc file or an `allowed-tools` line to it.
+  Each `README.md` is that plugin's listing and the security scan's disclosure: when a plugin starts running,
+  reading, writing or sending something new, say so there and in `PRIVACY.md` (the policy the directory requires,
+  which also covers the CLI's optional data flows). Privately reported security issues come in through `SECURITY.md`
+- `plugins/roastbot-full/app/roastbot/` is a generated copy of the read-only modules (`BUNDLE` in
   `scripts/bump_version.py`): never edit it. Change `roastbot/` and the release job copies it over. A bundled module
   must not import `agent`, `demo` or `openai_agent` at module level (`cli.py` imports them inside their commands), and
-  must not run subprocesses. When a bundled module needs a new dependency, add it to `plugins/roastbot/app/pyproject.toml`
-  too, then run `uv lock --project plugins/roastbot/app`
+  must not run subprocesses. When a bundled module needs a new dependency, add it to `plugins/roastbot-full/app/pyproject.toml`
+  too, then run `uv lock --project plugins/roastbot-full/app`
 - Azure MCP's usage telemetry is off (`AZURE_MCP_COLLECT_TELEMETRY=false` in `azure_mcp()` and both `.mcp.json` files),
   because the plugin README promises no telemetry
 
@@ -51,15 +59,16 @@ It's a contest and demo project, and the first slice of a broader infrastructure
 
 - Every push to `main` that changes `plugins/`, `roastbot/`, `.claude-plugin/`, `pyproject.toml` or `uv.lock` is a
   release. The `release` job in `ci.yml` bumps the patch version and syncs the plugin's bundle
-  (`scripts/bump_version.py`), commits `Release vX.Y.Z [skip ci]`, tags `vX.Y.Z`, fast-forwards the `release` branch
-  and creates a GitHub release. So `git pull` after pushing.
+  (`scripts/bump_version.py`), commits `Release vX.Y.Z [skip ci]`, pins the directory's plugin to that commit in a
+  second skip-ci commit (`bump_version.py --pin`), tags `vX.Y.Z`, fast-forwards the `release` branch, creates a GitHub
+  release and runs the pinned `uvx` command. So `git pull` after pushing.
 - `main` and `release` reject force pushes and deletion, and `v*` tags can't be moved or deleted (repo rulesets).
   Actions in `ci.yml` are pinned to commit SHAs; Dependabot (`.github/dependabot.yml`) proposes updates.
 - Don't bump the version by hand for a patch. For a minor or major release, run
   `uv run --no-project python scripts/bump_version.py minor` and push. CI sees the untagged version and releases it as is.
 - Never write GitHub's skip-ci marker (square brackets around "skip ci") anywhere in a commit message you push,
   not even quoted: GitHub then runs no workflow for that push, so nothing is checked or released. Only the CI's own
-  release commit carries it. If a release was skipped or raced, rerun it with `gh workflow run ci --ref main`.
+  release commits carry it. If a release was skipped or raced, rerun it with `gh workflow run ci --ref main`.
 - Users only receive a plugin change when its `version` changes.
 
 ## Commands
@@ -72,10 +81,10 @@ It's a contest and demo project, and the first slice of a broader infrastructure
 
 ## Tooling notes
 - `.mcp.json` gives Claude Code sessions in this repo the same read-only Azure MCP server the agent uses.
-- Azure MCP is pinned (`msmcp-azure==3.0.0`) in `roastbot/agent.py`, `.mcp.json` and `plugins/roastbot/mcp/`
+- Azure MCP is pinned (`msmcp-azure==3.0.0`) in `roastbot/agent.py`, `.mcp.json` and `plugins/roastbot-full/mcp/`
   (`pyproject.toml` plus `uv.lock`: the directory only accepts a lockfile pin, not `uvx pkg==X`). Bump all of them
-  together and rerun `uv lock --project plugins/roastbot/mcp`; `tests/test_plugin.py` checks they agree.
-- Anthropic's directory: the skill's `allowed-tools` lists exact MCP tools, never the whole server. The listing icon
+  together and rerun `uv lock --project plugins/roastbot-full/mcp`; `tests/test_plugin.py` checks they agree.
+- The full plugin's `allowed-tools` lists exact MCP tools, never the whole server. The directory's listing icon
   (`plugins/roastbot/.claude-plugin/icon.png`) is fixed the first time the plugin is saved in the portal.
 - The demo subscription has zero App Service quota, and East US often lacks capacity for small VM sizes.
   `demo plant` defaults to canadacentral and falls back through `VM_SIZES`.

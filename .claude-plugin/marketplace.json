@@ -7,7 +7,7 @@
   "plugins": [
     {
       "name": "roastbot",
-      "source": "./plugins/roastbot",
+      "source": "./plugins/roastbot-full",
       "description": "Find Azure waste, roast the owners, render a Wall of Shame report. Strictly read-only."
     }
   ]
