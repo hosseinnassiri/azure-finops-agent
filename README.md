@@ -2,7 +2,15 @@
 
 A rude, sarcastic AI agent that hunts cloud waste in Azure and publicly humiliates whoever owns it,
 with dollar figures, a Wall of Shame, a Savings Heroes leaderboard, and printable WANTED-poster, "what they
-said / what they did", Employee of the Month and tombstone memes. It's strictly read-only: it roasts, it never fixes. Each finding comes with a suggested `az` command for a human to run.
+said / what they did", Employee of the Month and tombstone memes. It's strictly read-only: it roasts, it never
+fixes. Each finding comes with a suggested `az` command for a human to run.
+
+![Four meme cards from a demo roast: a WANTED poster for an empty 1 TB disk ($1,622/yr reward), a "what they
+probably said / what they did" comic about a VM that was stopped but never deallocated, an Employee of the Month
+plaque for team-data, and a tombstone for $2,701.80 of annual budget](docs/meme-cards.png)
+
+*The report's meme cards, from a live `roast --demo`. Names, costs and owners come from the scan, the captions
+from Claude. Each card downloads as SVG.*
 
 **Stack:** Python · [Claude Agent SDK](https://code.claude.com/docs/en/agent-sdk/python) (runs on your Claude Code login) ·
 [Azure MCP Server](https://learn.microsoft.com/azure/developer/azure-mcp-server/) (via `uvx`) · Azure Resource Graph · uv
