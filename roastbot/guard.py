@@ -21,6 +21,7 @@ MAX_REWRITES = 2  # rounds of "rewrite these" sent back to Claude before leftove
 CONCURRENCY = 8
 TIMEOUT_S = 10.0
 FINDING_FIELDS = ("roast", "fix_note", "epithet", "title")
+MEME_FIELDS = {"wanted": ("charge", "last_seen"), "tombstone": ("epitaph",)}
 
 ALLOWED = (
 	"Profanity, swearing, sarcasm and harsh insults about competence, laziness or cloud spending are allowed. "
@@ -54,6 +55,11 @@ def texts(roasts: dict) -> list[tuple[list, str]]:
 		found.append((["headline"], roasts["headline"]))
 	found += [(["owners", o], line) for o, line in roasts.get("owners", {}).items() if line]
 	found += [(["insults", i], line) for i, line in enumerate(roasts.get("insults", [])) if line]
+	captions = roasts.get("memes") or {}
+	for meme, fields in MEME_FIELDS.items():
+		found += [
+			(["memes", meme, k], (captions.get(meme) or {})[k]) for k in fields if (captions.get(meme) or {}).get(k)
+		]
 	for fid, verdict in roasts.get("findings", {}).items():
 		found += [(["findings", fid, k], verdict[k]) for k in FINDING_FIELDS if verdict.get(k)]
 		# Evidence too: activity-log callers can carry real names.
@@ -141,6 +147,8 @@ def apply(roasts: dict) -> dict:
 				clean.get("owners", {}).pop(owner, None)
 			case ["insults", int(i)]:
 				dropped_insults.add(i)
+			case ["memes", meme, field]:
+				(clean.get("memes", {}).get(meme) or {}).pop(field, None)
 			case ["findings", fid, "evidence", key]:
 				clean.get("findings", {}).get(fid, {}).get("evidence", {}).pop(key, None)
 			case ["findings", fid, field]:

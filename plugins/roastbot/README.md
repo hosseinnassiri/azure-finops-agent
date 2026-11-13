@@ -3,7 +3,8 @@
 A rude, sarcastic Azure FinOps auditor for Claude Code. RoastBot sweeps your Azure subscriptions for cloud waste
 (idle and stopped-but-billing VMs, unattached disks, orphaned public IPs and NICs, old snapshots, empty App Service
 plans), checks each finding against live Azure data, and writes a savage roast for every one. The result is an
-HTML report with dollar figures, a Wall of Shame for the worst-offending teams and suggested fix commands.
+HTML report with dollar figures, a Wall of Shame for the worst-offending teams, a WANTED poster and a budget
+tombstone (drawn locally as SVG), and suggested fix commands.
 
 **Claude Code only.** RoastBot needs a local shell, [uv](https://docs.astral.sh/uv/), the
 [Azure CLI](https://learn.microsoft.com/cli/azure/install-azure-cli) and an Azure login, so it doesn't work on

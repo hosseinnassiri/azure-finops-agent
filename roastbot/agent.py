@@ -106,12 +106,18 @@ Scope: {scope}
    {{"headline": "<one absolute haymaker of a line about the whole estate, with the monthly and yearly total>",
      "owners": {{"<owner>": "<a brutal one-liner addressed to that owner for the Wall of Shame, max 15 words>"}},
      "insults": ["<6-8 standalone savage one-liners about this estate's waste, for the ticker and the Hate Mail panel>"],
+     "memes": {{"wanted": {{"charge": "<the most expensive finding you kept, charged like a criminal, max 12 words>",
+                          "last_seen": "<where it was last seen doing fuck-all, max 8 words>"}},
+               "tombstone": {{"epitaph": "<an epitaph for the budget this estate killed, max 15 words>"}}}},
      "findings": {{"<finding id>": {{"roast": "<3-5 sentences of escalating contempt built on the facts, ending with a killer one-liner>",
                                   "fix_note": "<the correct fix and one real caveat, explained with maximum condescension>",
                                   "epithet": "<a 2-5 word insulting title for this offender, e.g. 'Certified Budget Arsonist'>",
                                   "title": "<optional better title>", "evidence": {{"<k>": "<v>"}},
                                   "dismiss": false, "dismiss_reason": "<only when dismissing>"}}}}}}
-   Include every finding id, dismissed or not.{guard_note}
+   Include every finding id, dismissed or not. The report draws a WANTED poster of the most expensive finding you
+   kept and a tombstone for the budget, and fills in their names, costs and owners itself: the captions supply only
+   the jokes. Don't repeat what the cards print: the poster shows the resource name, epithet and yearly reward, and
+   the stone says "Here lies $X of annual budget, killed by <top owner>".{guard_note}
 4. Call mcp__roastbot__render_report.
 5. End with a terminal roast (max 10 lines, fully in character): total monthly and yearly waste, the worst three
    offenders with ids and $/mo, and the public humiliation of the Wall of Shame leader.

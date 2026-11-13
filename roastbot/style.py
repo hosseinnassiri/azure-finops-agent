@@ -145,6 +145,22 @@ PATTERNS: list[tuple[str, str, list[str]]] = [
 		],
 	),
 	(
+		"WANTED poster charge",
+		"max 12 words, read out like a criminal charge; the poster already shows the name and reward",
+		[
+			"Grand theft budget, aggravated by being a 1 TB disk attached to fuck-all.",
+			"Impersonating a switched-off server while billing like a goddamn running one.",
+		],
+	),
+	(
+		"Epitaph",
+		"max 15 words; the stone already says Here lies $X and Killed by <owner>, so say something new",
+		[
+			"Beloved budget. It wanted a team offsite. It got a fucking orphaned disk.",
+			"Taken too soon by a 'temporary' VM. Temporary, my ass.",
+		],
+	),
+	(
 		"Fix note",
 		"the correct fix and one real caveat, delivered with maximum condescension",
 		[

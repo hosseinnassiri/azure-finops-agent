@@ -13,7 +13,7 @@ from collections import defaultdict
 from html import escape
 from pathlib import Path
 
-from . import guard
+from . import guard, memes
 
 FALLBACK_ROASTS = {
 	"unattached_disk": "A disk attached to NOTHING, billed like it's holding up the whole company. Who signed off on this shit?",
@@ -178,9 +178,13 @@ def pick(options: list[str], key: str) -> str:
 	return options[int(hashlib.sha1(key.encode()).hexdigest(), 16) % len(options)]
 
 
+def epithet_for(f: dict, roast: dict) -> str:
+	return roast.get("epithet") or pick(EPITHETS, f["id"])
+
+
 def finding_card(n: int, f: dict, roast: dict) -> str:
 	cost = f["monthly_cost_usd"]
-	epithet = roast.get("epithet") or pick(EPITHETS, f["id"])
+	epithet = epithet_for(f, roast)
 	label, tone = stamp_for(cost)
 	evidence = "".join(
 		f"<li><span>{escape(str(k).replace('_', ' '))}</span><b>{escape(str(v))}</b></li>"
@@ -373,6 +377,9 @@ def render(scan: dict, findings: list[dict], roasts: dict, saved: dict[str, floa
 	scanned = scan["scanned_at"].replace("T", " ").split("+")[0]
 	flame_icons = "".join(f'<i class="{"on" if i < flames else ""}">🔥</i>' for i in range(5))
 	banner, checked = guard_notes(roasts.get("guard"))
+	epithets = {f["id"]: epithet_for(f, per_finding.get(f["id"], {})) for f in findings}
+	killer = shame_rows[0][0] if shame_rows else ""
+	meme_cards = memes.section(findings, epithets, roasts.get("memes") or {}, killer, owners, scanned.split(" ")[0])
 	clean = (
 		'<div class="clean">No waste found. Either you are a FinOps saint or the scan is lying. '
 		"Statistically, the scan is lying.</div>"
@@ -382,7 +389,7 @@ def render(scan: dict, findings: list[dict], roasts: dict, saved: dict[str, floa
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>The Daily Burn</title>
 {FONTS}
-<style>{CSS}</style></head>
+<style>{CSS}{memes.CSS}</style></head>
 <body><main>
   <header class="masthead">
     <div>
@@ -411,6 +418,7 @@ def render(scan: dict, findings: list[dict], roasts: dict, saved: dict[str, floa
 
   <section class="panel hate"><h2>💌 Hate Mail</h2><p class="sub">Unsolicited feedback, delivered with love. Just kidding, fuck your feelings.</p>
     <ul>{hate_mail}</ul></section>
+  {meme_cards}
 
   <h2 class="section-title">The Evidence <small>{plural(len(findings), "exhibit")} of half-assed negligence, worst first</small></h2>
   <section class="cards">{cards or clean}</section>

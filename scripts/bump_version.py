@@ -30,7 +30,7 @@ PIN_RE = re.compile(r"--exclude-newer \S+ (--from \"git\+https://github\.com/[\w
 VERSION_RE = re.compile(r'^version = "(\d+)\.(\d+)\.(\d+)"', re.M)
 # What the skill runs: scan and report. No agent engines (they need the SDKs) and no demo (it creates and deletes
 # Azure resources), so the plugin carries only read-only code.
-BUNDLE = ["__init__", "cli", "cloud", "detectors", "guard", "pricing", "report", "scan"]
+BUNDLE = ["__init__", "cli", "cloud", "detectors", "guard", "memes", "pricing", "report", "scan"]
 
 
 def next_version(current: tuple[int, int, int], how: str) -> str:

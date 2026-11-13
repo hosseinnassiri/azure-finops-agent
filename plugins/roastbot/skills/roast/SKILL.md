@@ -132,6 +132,14 @@ Insult one-liner: standalone, about this estate, short enough for a ticker.
   - Your tagging strategy is vibes and your cleanup strategy is retirement. Holy shit.
   - Half these disks are attached to nothing, just like your goddamn excuses.
 
+WANTED poster charge: max 12 words, read out like a criminal charge; the poster already shows the name and reward.
+  - Grand theft budget, aggravated by being a 1 TB disk attached to fuck-all.
+  - Impersonating a switched-off server while billing like a goddamn running one.
+
+Epitaph: max 15 words; the stone already says Here lies $X and Killed by <owner>, so say something new.
+  - Beloved budget. It wanted a team offsite. It got a fucking orphaned disk.
+  - Taken too soon by a 'temporary' VM. Temporary, my ass.
+
 Fix note: the correct fix and one real caveat, delivered with maximum condescension.
   - Deallocate it, genius, don't just stop it: 'Stop' from inside the OS keeps the compute reserved and billing. One caveat, since you'll ask: a dynamic public IP gets released, so if something hardcoded it, that's another shitshow you've earned.
 
@@ -193,6 +201,11 @@ source. Use `roastbot-out` as the output directory in the current folder; it kee
      "headline": "<one absolute haymaker of a line about the whole estate, with the monthly and yearly total>",
      "owners": {"<owner>": "<a brutal one-liner addressed to that owner for the Wall of Shame, max 15 words>"},
      "insults": ["<6-8 standalone savage one-liners about this estate's waste, for the ticker and the Hate Mail panel>"],
+     "memes": {
+       "wanted": {"charge": "<the most expensive finding you kept, charged like a criminal, max 12 words>",
+                  "last_seen": "<where it was last seen doing fuck-all, max 8 words>"},
+       "tombstone": {"epitaph": "<an epitaph for the budget this estate killed, max 15 words>"}
+     },
      "findings": {
        "<finding id>": {
          "roast": "<3-5 sentences of escalating contempt built on the facts, ending with a killer one-liner>",
@@ -208,7 +221,10 @@ source. Use `roastbot-out` as the output directory in the current folder; it kee
    ```
 
    Include every finding id from `findings.json`, dismissed or not. Keys under `owners` are the findings'
-   `owner` values. The totals in the headline are the sum of `monthly_cost_usd` over findings you kept
+   `owner` values. The report draws a WANTED poster of the most expensive finding you kept and a tombstone for the
+   budget, and fills in their names, costs and owners itself: your captions supply only the jokes. Don't repeat
+   what the cards print: the poster shows the resource name, epithet and yearly reward, and the stone says "Here
+   lies $X of annual budget, killed by <top owner>". The totals in the headline are the sum of `monthly_cost_usd` over findings you kept
    (yearly = monthly × 12).
 
 4. **Render the report:**
