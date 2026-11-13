@@ -2,7 +2,7 @@
 # Generated from the repo root by scripts/bump_version.py at every release. Don't edit roastbot/ here.
 [project]
 name = "roastbot-plugin"
-version = "0.2.7"
+version = "0.2.8"
 description = "RoastBot's read-only Azure waste scan and report, bundled with the RoastBot Claude Code plugin"
 requires-python = ">=3.11"
 license = "Apache-2.0"

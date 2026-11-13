@@ -1,6 +1,6 @@
 [project]
 name = "roastbot"
-version = "0.2.7"
+version = "0.2.8"
 description = "Rude, sarcastic Azure FinOps agent: finds cloud waste and roasts whoever owns it"
 readme = "README.md"
 requires-python = ">=3.11"
