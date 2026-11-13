@@ -1,7 +1,7 @@
 {
   "name": "roastbot",
   "displayName": "RoastBot",
-  "version": "0.2.9",
+  "version": "0.2.10",
   "description": "Rude, sarcastic Azure FinOps auditor: finds cloud waste, roasts whoever owns it, and renders a Wall of Shame report. Strictly read-only.",
   "author": {
     "name": "Hossein Nassiri"
