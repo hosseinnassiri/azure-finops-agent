@@ -3,8 +3,15 @@
 A rude, sarcastic Azure FinOps auditor for Claude Code. RoastBot sweeps your Azure subscriptions for cloud waste
 (idle and stopped-but-billing VMs, unattached disks, orphaned public IPs and NICs, old snapshots, empty App Service
 plans), checks each finding against live Azure data, and writes a savage roast for every one. The result is an
-HTML report with dollar figures, a Wall of Shame for the worst-offending teams, a WANTED poster, a "what they said / what they
-did" card, an Employee of the Month plaque and a budget tombstone (drawn locally as SVG), and suggested fix commands.
+HTML report with dollar figures, a Wall of Shame for the worst-offending teams, a WANTED poster, a "what they
+said / what they did" card, an Employee of the Month plaque and a budget tombstone (drawn locally as SVG), and
+suggested fix commands.
+
+![Four meme cards from a demo roast: a WANTED poster for an empty 1 TB disk ($1,622/yr reward), a "what they
+probably said / what they did" comic about a VM that was stopped but never deallocated, an Employee of the Month
+plaque for team-data, and a tombstone for $2,701.80 of annual budget](docs/meme-cards.png)
+
+*The report's meme cards, from a demo run. Names, costs and owners come from the scan, the captions from Claude.*
 
 **Claude Code only.** RoastBot needs a local shell, [uv](https://docs.astral.sh/uv/) and an Azure login, so it
 doesn't work on claude.ai or in Cowork.

@@ -172,6 +172,17 @@ def test_plugin_ships_the_license(plugin):
 	assert 'license = "Apache-2.0"' in (ROOT / "pyproject.toml").read_text(encoding="utf-8")
 
 
+@pytest.mark.parametrize("plugin", [PLUGIN, DIRECTORY], ids=["full", "directory"])
+def test_plugin_readme_images_ship_with_the_plugin(plugin):
+	# Installs and the directory's scan see only the plugin folder, so README images live inside it: copies of docs/.
+	readme = (plugin / "README.md").read_text(encoding="utf-8")
+	images = re.findall(r"!\[[^\]]*\]\(([^)]+)\)", readme)
+	assert images
+	for image in images:
+		assert not image.startswith(("http", "/", "..")), image
+		assert (plugin / image).read_bytes() == (ROOT / image).read_bytes(), image
+
+
 def test_plugin_ships_a_privacy_policy():
 	# Anthropic's directory policy requires one for software that connects to a remote service. One policy covers both.
 	policy = (DIRECTORY / "PRIVACY.md").read_text(encoding="utf-8")
