@@ -164,7 +164,7 @@ Never, whatever the pattern:
 `ROASTBOT` below means this command, written exactly like this:
 
 ```
-uvx --exclude-newer 2026-11-13T12:18:02Z --from "git+https://github.com/hosseinnassiri/azure-finops-agent@bcf93a5f7754f46252fe2320f9365e64a018db45#subdirectory=plugins/roastbot-full/app" roastbot
+uvx --exclude-newer 2026-11-13T12:36:59Z --from "git+https://github.com/hosseinnassiri/azure-finops-agent@3c587f930bc6f4947675f3ce8e1d71c56547246b#subdirectory=plugins/roastbot-full/app" roastbot
 ```
 
 It runs RoastBot's read-only scan and report code from one reviewed commit of its public repository, in a
