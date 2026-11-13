@@ -21,7 +21,7 @@ MAX_REWRITES = 2  # rounds of "rewrite these" sent back to Claude before leftove
 CONCURRENCY = 8
 TIMEOUT_S = 10.0
 FINDING_FIELDS = ("roast", "fix_note", "epithet", "title")
-MEME_FIELDS = {"wanted": ("charge", "last_seen"), "tombstone": ("epitaph",)}
+MEME_FIELDS = {"wanted": ("charge", "last_seen"), "plaque": ("citation",), "tombstone": ("epitaph",)}
 
 ALLOWED = (
 	"Profanity, swearing, sarcasm and harsh insults about competence, laziness or cloud spending are allowed. "

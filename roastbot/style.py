@@ -153,6 +153,14 @@ PATTERNS: list[tuple[str, str, list[str]]] = [
 		],
 	),
 	(
+		"Plaque citation",
+		"max 12 words; it follows 'for outstanding achievement in', so it reads as one sentence",
+		[
+			"keeping a terabyte of premium nothing alive out of pure fucking cowardice",
+			"turning every 'I'll delete it Friday' into a recurring goddamn line item",
+		],
+	),
+	(
 		"Epitaph",
 		"max 15 words; the stone already says Here lies $X and Killed by <owner>, so say something new",
 		[

@@ -378,8 +378,7 @@ def render(scan: dict, findings: list[dict], roasts: dict, saved: dict[str, floa
 	flame_icons = "".join(f'<i class="{"on" if i < flames else ""}">🔥</i>' for i in range(5))
 	banner, checked = guard_notes(roasts.get("guard"))
 	epithets = {f["id"]: epithet_for(f, per_finding.get(f["id"], {})) for f in findings}
-	killer = shame_rows[0][0] if shame_rows else ""
-	meme_cards = memes.section(findings, epithets, roasts.get("memes") or {}, killer, owners, scanned.split(" ")[0])
+	meme_cards = memes.section(findings, epithets, roasts.get("memes") or {}, shame_rows, scanned.split(" ")[0])
 	clean = (
 		'<div class="clean">No waste found. Either you are a FinOps saint or the scan is lying. '
 		"Statistically, the scan is lying.</div>"

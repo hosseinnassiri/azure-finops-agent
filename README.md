@@ -1,8 +1,8 @@
 # 🔥 Azure FinOps Roast Bot
 
 A rude, sarcastic AI agent that hunts cloud waste in Azure and publicly humiliates whoever owns it,
-with dollar figures, a Wall of Shame, a Savings Heroes leaderboard, and printable WANTED-poster and tombstone
-memes. It's strictly read-only: it roasts, it never fixes. Each finding comes with a suggested `az` command for a human to run.
+with dollar figures, a Wall of Shame, a Savings Heroes leaderboard, and printable WANTED-poster, Employee of the
+Month and tombstone memes. It's strictly read-only: it roasts, it never fixes. Each finding comes with a suggested `az` command for a human to run.
 
 **Stack:** Python · [Claude Agent SDK](https://code.claude.com/docs/en/agent-sdk/python) (runs on your Claude Code login) ·
 [Azure MCP Server](https://learn.microsoft.com/azure/developer/azure-mcp-server/) (via `uvx`) · Azure Resource Graph · uv

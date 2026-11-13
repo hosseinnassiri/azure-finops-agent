@@ -1,4 +1,5 @@
-"""Meme cards for the report: a WANTED poster for the worst offender and a tombstone for the budget.
+"""Meme cards for the report: a WANTED poster for the worst offender, an Employee of the Month plaque for the Wall of
+Shame leader and a tombstone for the budget.
 
 Drawn here as inline SVG, so they need no image service and nothing leaves the machine. The facts on them (names,
 dollar figures, owners) come from the findings; only the captions come from the agent (roasts.json "memes"), with
@@ -7,6 +8,7 @@ canned fallbacks. Colours are fixed: they're printed objects, the same in light 
 
 from __future__ import annotations
 
+import datetime as dt
 import textwrap
 from html import escape
 from urllib.parse import quote
@@ -26,6 +28,7 @@ FALLBACK_CHARGES = {
 	"old_snapshot": "Hoarding a 'just in case' nobody remembers, for fuck's sake",
 }
 FALLBACK_LAST_SEEN = "Billing. Always fucking billing."
+FALLBACK_CITATION = "Turning a perfectly good cloud budget into a goddamn bonfire"
 FALLBACK_EPITAPH = "It could have been a team offsite. Instead it was this shit."
 
 
@@ -165,21 +168,91 @@ def tombstone(total: float, killer: str, accomplices: int, date: str, caption: d
 	return svg(body, f"R.I.P. ${total * 12:,.2f} of annual budget")
 
 
+def dumpster_fire() -> str:
+	"""The plaque's portrait: the team's finest work."""
+	return (
+		'<rect x="90" y="98" width="120" height="120" fill="#2b1d14" stroke="url(#rb-gold)" stroke-width="6"/>'
+		'<path d="M116 172 C112 152 128 148 124 130 C136 142 140 122 138 108 C152 124 160 134 156 150 '
+		'C166 142 170 130 168 120 C182 138 186 156 184 172 Z" fill="#e8590c"/>'
+		'<path d="M130 172 C128 158 140 154 138 142 C148 152 152 146 152 136 C162 150 166 160 168 172 Z" fill="#ffc53d"/>'
+		'<path d="M108 172 H192 L186 206 H114 Z" fill="#2f6b3a"/>'
+		'<rect x="104" y="166" width="92" height="8" rx="2" fill="#24532d"/>'
+		'<circle cx="122" cy="208" r="4" fill="#111"/><circle cx="178" cy="208" r="4" fill="#111"/>'
+	)
+
+
+def plaque(owner: str, cost: float, offences: int, date: str, caption: dict) -> str:
+	citation = caption.get("citation") or FALLBACK_CITATION
+	try:
+		month = dt.date.fromisoformat(date).strftime("%B %Y")
+	except ValueError:
+		month = date
+	gold = "#3b2a10"
+	screws = "".join(
+		f'<circle cx="{x}" cy="{y}" r="4" fill="url(#rb-gold)" stroke="#3b2a10" stroke-width=".8"/>'
+		for x, y in ((22, 22), (278, 22), (22, 398), (278, 398))
+	)
+	body = (
+		'<defs><linearGradient id="rb-gold" x1="0" y1="0" x2="1" y2="1">'
+		'<stop offset="0" stop-color="#f6d77a"/><stop offset=".5" stop-color="#d4a017"/>'
+		'<stop offset="1" stop-color="#a87406"/></linearGradient></defs>'
+		'<rect width="300" height="420" rx="12" fill="#6b4428"/>'
+		'<rect x="10" y="10" width="280" height="400" rx="8" fill="none" stroke="#4a2e1a" stroke-width="3"/>'
+		+ screws
+		+ '<rect x="34" y="26" width="232" height="58" rx="4" fill="url(#rb-gold)"/>'
+		f'<text x="150" y="52" text-anchor="middle" font-family="{DISPLAY}" font-size="24" fill="{gold}" '
+		'letter-spacing="3">EMPLOYEE</text>'
+		f'<text x="150" y="75" text-anchor="middle" font-family="{DISPLAY}" font-size="16" fill="{gold}" '
+		'letter-spacing="3">OF THE MONTH</text>'
+		+ dumpster_fire()
+		+ '<rect x="50" y="232" width="200" height="30" rx="3" fill="url(#rb-gold)"/>'
+		f'<text x="150" y="252" text-anchor="middle" font-family="{MONO}" font-size="13" font-weight="700" '
+		f'fill="{gold}">{escape(clip(owner, 26))}</text>'
+		f'<text x="150" y="282" text-anchor="middle" font-family="{MONO}" font-size="10" fill="#f1e3c2" '
+		f'letter-spacing="1.5">{escape(month.upper())}</text>'
+		f'<text x="150" y="302" text-anchor="middle" font-family="{BODY}" font-size="10" fill="#e7d4ab">'
+		"for outstanding achievement in</text>"
+		+ text_block(
+			lines(citation, 36, 3),
+			150,
+			320,
+			15,
+			text_anchor="middle",
+			font_family=BODY,
+			font_size="12",
+			font_style="italic",
+			fill="#f1e3c2",
+		)
+		+ '<rect x="62" y="364" width="176" height="26" rx="3" fill="url(#rb-gold)"/>'
+		f'<text x="150" y="381" text-anchor="middle" font-family="{MONO}" font-size="10" font-weight="600" '
+		f'fill="{gold}">${cost:,.2f}/mo · {offences} offence{"s" if offences != 1 else ""}</text>'
+	)
+	return svg(body, f"Employee of the Month: {owner}")
+
+
 def download(svg_text: str, name: str) -> str:
 	return f'<a download="{name}" href="data:image/svg+xml;charset=utf-8,{quote(svg_text)}">Download SVG</a>'
 
 
-def section(findings: list[dict], epithets: dict[str, str], captions: dict, killer: str, owners: int, date: str) -> str:
-	"""The report's meme section, or "" when there's nothing to roast."""
-	if not findings:
+def section(
+	findings: list[dict], epithets: dict[str, str], captions: dict, shame: list[tuple[str, float, int]], date: str
+) -> str:
+	"""The report's meme section, or "" when there's nothing to roast. shame is the Wall of Shame, worst first."""
+	if not findings or not shame:
 		return ""
+	leader, leader_cost, offences = shame[0]
 	worst = max(findings, key=lambda f: f["monthly_cost_usd"] or 0)
 	total = sum(f["monthly_cost_usd"] or 0 for f in findings)
 	poster = wanted(worst, epithets[worst["id"]], captions.get("wanted") or {})
-	grave = tombstone(total, killer, owners - 1, date, captions.get("tombstone") or {})
+	award = plaque(leader, leader_cost, offences, date, captions.get("plaque") or {})
+	grave = tombstone(total, leader, len(shame) - 1, date, captions.get("tombstone") or {})
 	cards = "".join(
 		f"<figure>{art}<figcaption>{download(art, name)}</figcaption></figure>"
-		for art, name in ((poster, "roastbot-wanted.svg"), (grave, "roastbot-tombstone.svg"))
+		for art, name in (
+			(poster, "roastbot-wanted.svg"),
+			(award, "roastbot-employee-of-the-month.svg"),
+			(grave, "roastbot-tombstone.svg"),
+		)
 	)
 	return (
 		'<section class="memes"><h2 class="section-title">Print These Out <small>and tape them to the '
@@ -189,10 +262,11 @@ def section(findings: list[dict], epithets: dict[str, str], captions: dict, kill
 
 CSS = """
 .memes { margin-bottom:32px; }
-.meme-row { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,260px),340px)); gap:24px; justify-content:center; }
+.meme-row { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,240px),330px)); gap:24px; justify-content:center; }
 .memes figure { margin:0; text-align:center; }
 .memes svg { display:block; width:100%; height:auto; border-radius:4px; box-shadow:0 14px 30px -16px rgba(0,0,0,.5); }
 .memes figure:first-child svg { transform:rotate(-1.5deg); }
+.memes figure:nth-child(2) svg { transform:rotate(.5deg); }
 .memes figure:last-child svg { transform:rotate(1deg); }
 .memes figcaption { margin-top:12px; font:500 12px var(--mono); }
 .memes figcaption a { color:var(--fire); }

@@ -136,6 +136,10 @@ WANTED poster charge: max 12 words, read out like a criminal charge; the poster 
   - Grand theft budget, aggravated by being a 1 TB disk attached to fuck-all.
   - Impersonating a switched-off server while billing like a goddamn running one.
 
+Plaque citation: max 12 words; it follows 'for outstanding achievement in', so it reads as one sentence.
+  - keeping a terabyte of premium nothing alive out of pure fucking cowardice
+  - turning every 'I'll delete it Friday' into a recurring goddamn line item
+
 Epitaph: max 15 words; the stone already says Here lies $X and Killed by <owner>, so say something new.
   - Beloved budget. It wanted a team offsite. It got a fucking orphaned disk.
   - Taken too soon by a 'temporary' VM. Temporary, my ass.
@@ -204,6 +208,7 @@ source. Use `roastbot-out` as the output directory in the current folder; it kee
      "memes": {
        "wanted": {"charge": "<the most expensive finding you kept, charged like a criminal, max 12 words>",
                   "last_seen": "<where it was last seen doing fuck-all, max 8 words>"},
+       "plaque": {"citation": "<what the Wall of Shame leader is Employee of the Month for, max 12 words>"},
        "tombstone": {"epitaph": "<an epitaph for the budget this estate killed, max 15 words>"}
      },
      "findings": {
@@ -220,12 +225,13 @@ source. Use `roastbot-out` as the output directory in the current folder; it kee
    }
    ```
 
-   Include every finding id from `findings.json`, dismissed or not. Keys under `owners` are the findings'
-   `owner` values. The report draws a WANTED poster of the most expensive finding you kept and a tombstone for the
-   budget, and fills in their names, costs and owners itself: your captions supply only the jokes. Don't repeat
-   what the cards print: the poster shows the resource name, epithet and yearly reward, and the stone says "Here
-   lies $X of annual budget, killed by <top owner>". The totals in the headline are the sum of `monthly_cost_usd` over findings you kept
-   (yearly = monthly × 12).
+   Include every finding id from `findings.json`, dismissed or not. Keys under `owners` are the findings' `owner` values.
+   The report draws a WANTED poster of the most expensive finding you kept, an Employee of the Month plaque for the
+   Wall of Shame leader and a tombstone for the budget, and fills in their names, costs and owners itself: your
+   captions supply only the jokes. Don't repeat what the cards print: the poster shows the resource name, epithet and
+   yearly reward, the plaque shows the owner, month, monthly cost and offence count under "for outstanding achievement
+   in", and the stone says "Here lies $X of annual budget, killed by <top owner>". The totals in the headline are the
+   sum of `monthly_cost_usd` over findings you kept (yearly = monthly × 12).
 
 4. **Render the report:**
 

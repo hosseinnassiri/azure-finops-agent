@@ -29,7 +29,7 @@ It's a contest and demo project, and the first slice of a broader infrastructure
 - `roastbot/detectors.py`: Resource Graph detectors; register new ones in `DETECTORS`
 - `roastbot/cloud.py`: Resource Graph paging. `pricing.py`: list-price estimates
 - `roastbot/scan.py`: sweep → `out/findings.json`. `report.py`: verdicts + history → `out/report.html`
-- `roastbot/memes.py`: the report's WANTED poster and tombstone, drawn as inline SVG (bundled, like `report.py`)
+- `roastbot/memes.py`: the report's WANTED poster, Employee of the Month plaque and tombstone, drawn as inline SVG (bundled, like `report.py`)
 - `roastbot/demo.py`: plant/cleanup demo waste via `az`
 - `roastbot/guard.py`: opt-in (`roast --guard`) Jev content check on the roasts. Fails open. `typesafe-sdk` is the
   optional `guard` extra, imported lazily, so `report.py` only uses the SDK-free `apply`
