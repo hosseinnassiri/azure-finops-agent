@@ -23,6 +23,8 @@ It's a contest and demo project, and the first slice of a broader infrastructure
 ## Layout
 
 - `roastbot/agent.py`: persona, task prompt, Agent SDK options, in-process tools
+- `roastbot/style.py`: hand-curated roast patterns and examples (no runtime roast source, by design). The agent
+  rotates one example per pattern; both skills' ```style block is `style.render()`, regenerate it when you edit
 - `roastbot/cli.py`: `roastbot` entry point (roast / scan / report / demo; `--provider claude|openai`)
 - `roastbot/detectors.py`: Resource Graph detectors; register new ones in `DETECTORS`
 - `roastbot/cloud.py`: Resource Graph paging. `pricing.py`: list-price estimates

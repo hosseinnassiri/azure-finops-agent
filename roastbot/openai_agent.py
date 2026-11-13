@@ -180,5 +180,5 @@ async def roast(task: str, tools: agent.RoastTools, model: str | None) -> None:
 	async with stdio_client(params) as (read, write), ClientSession(read, write) as session:
 		await session.initialize()
 		registry = {**mcp_tools(session, await list_mcp_tools(session)), **roast_tools(tools)}
-		messages = [{"role": "system", "content": agent.PERSONA}, {"role": "user", "content": task}]
+		messages = [{"role": "system", "content": agent.system_prompt()}, {"role": "user", "content": task}]
 		await run(client, model, messages, registry)

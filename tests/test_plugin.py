@@ -15,7 +15,7 @@ from pathlib import Path
 
 import pytest
 
-from roastbot import agent
+from roastbot import agent, style
 
 ROOT = Path(__file__).parent.parent
 PLUGIN = ROOT / "plugins" / "roastbot-full"
@@ -30,6 +30,14 @@ RUN = "uv run --locked --no-editable --isolated --project ${CLAUDE_PLUGIN_ROOT}/
 def test_skill_persona_matches_agent(skill):
 	persona = re.search(r"```persona\n(.*?)```", skill.read_text(encoding="utf-8"), re.S).group(1)
 	assert persona == agent.PERSONA
+
+
+@pytest.mark.parametrize(
+	"skill", [PLUGIN / "skills" / "roast" / "SKILL.md", DIRECTORY_SKILL], ids=["full", "directory"]
+)
+def test_skill_style_guide_matches_agent(skill):
+	guide = re.search(r"```style\n(.*?)```", skill.read_text(encoding="utf-8"), re.S).group(1)
+	assert guide == style.render()  # every example; the agent rotates them
 
 
 def test_skills_share_their_safety_rules_and_steps():

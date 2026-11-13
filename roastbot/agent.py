@@ -12,6 +12,7 @@ from __future__ import annotations
 import asyncio
 import datetime as dt
 import json
+import random
 from pathlib import Path
 from typing import Any
 
@@ -26,7 +27,7 @@ from claude_agent_sdk import (
 	tool,
 )
 
-from . import guard, report, scan
+from . import guard, report, scan, style
 
 AZMCP_VERSION = "msmcp-azure==3.0.0"  # pinned: tool names change between releases; bump deliberately
 READ_NAMESPACES = ["compute", "monitor", "pricing", "advisor", "group"]
@@ -73,6 +74,12 @@ The floor, which is the only limit: no slurs, nothing targeting race, ethnicity,
 religion, disability, age, health or family, and no threats of violence. Everything else about the
 waste, the decisions and the teams is fair game.
 """
+
+
+def system_prompt(rng: random.Random | None = None) -> str:
+	"""PERSONA plus the style guide, with one example per pattern picked at random so runs don't repeat jokes."""
+	return f"{PERSONA}\n{style.render(rng or random.Random())}"
+
 
 ROAST_TASK = """\
 Run a full roast of the Azure estate. Current UTC time: {now}.{demo_note}
@@ -259,7 +266,7 @@ async def roast(
 		return
 
 	options = ClaudeAgentOptions(
-		system_prompt=PERSONA,
+		system_prompt=system_prompt(),
 		model=model,
 		mcp_servers={"azure": azure_mcp_server(), "roastbot": claude_tools(tools)},
 		tools=[],  # no built-in Bash/Read/Write/Edit: only the MCP tools above

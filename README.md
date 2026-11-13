@@ -135,7 +135,9 @@ This mode is less locked down than `roastbot roast`. The agent there has no shel
 skill tells Claude never to change Azure or run the fix commands, and Claude Code's permission prompts still apply
 to everything else. Even so, it's only as read-only as the identity you're logged in with, so use a Reader-scoped
 login if that matters. The persona in both plugins' `skills/roast/SKILL.md` must match `PERSONA` in
-`roastbot/agent.py`, and `tests/test_plugin.py` enforces that.
+`roastbot/agent.py`, and their style guide must match `roastbot/style.py` (hand-written roast patterns and
+examples; the CLI shows one random example per pattern each run, the skills carry them all). `tests/test_plugin.py`
+enforces both.
 
 To pick up new releases, run `/plugin marketplace update roastbot`, or turn on auto-update for the marketplace
 under **Marketplaces** in `/plugin`. CI cuts a patch release on every push to `main` that changes the plugin or the
