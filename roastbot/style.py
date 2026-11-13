@@ -153,6 +153,16 @@ PATTERNS: list[tuple[str, str, list[str]]] = [
 		],
 	),
 	(
+		"What they said / what they did",
+		"a believable excuse, then the facts that wreck it; max 12 words each",
+		[
+			"Said: This snapshot is just temporary, I'll clean it up after the upgrade. "
+			"Did: Kept it 412 days, through three upgrades and one goddamn reorg.",
+			"Said: Don't worry, I shut the VM down. "
+			"Did: Clicked stop in the OS and let it bill full price like a dumbass.",
+		],
+	),
+	(
 		"Plaque citation",
 		"max 12 words; it follows 'for outstanding achievement in', so it reads as one sentence",
 		[

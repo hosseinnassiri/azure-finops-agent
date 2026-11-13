@@ -108,6 +108,9 @@ Scope: {scope}
      "insults": ["<6-8 standalone savage one-liners about this estate's waste, for the ticker and the Hate Mail panel>"],
      "memes": {{"wanted": {{"charge": "<the most expensive finding you kept, charged like a criminal, max 12 words>",
                           "last_seen": "<where it was last seen doing fuck-all, max 8 words>"}},
+               "excuse": {{"finding": "<id of a finding you kept, ideally not the WANTED one>",
+                          "said": "<the excuse its owner probably gave, max 12 words, no quote marks>",
+                          "did": "<what the facts say they actually did, max 12 words>"}},
                "plaque": {{"citation": "<what the Wall of Shame leader is Employee of the Month for, max 12 words>"}},
                "tombstone": {{"epitaph": "<an epitaph for the budget this estate killed, max 15 words>"}}}},
      "findings": {{"<finding id>": {{"roast": "<3-5 sentences of escalating contempt built on the facts, ending with a killer one-liner>",
@@ -115,12 +118,14 @@ Scope: {scope}
                                   "epithet": "<a 2-5 word insulting title for this offender, e.g. 'Certified Budget Arsonist'>",
                                   "title": "<optional better title>", "evidence": {{"<k>": "<v>"}},
                                   "dismiss": false, "dismiss_reason": "<only when dismissing>"}}}}}}
-   Include every finding id, dismissed or not. The report draws a WANTED poster of the most expensive finding you kept,
-   an Employee of the Month plaque for the Wall of Shame leader and a tombstone for the budget, and fills in their
-   names, costs and owners itself: the captions supply only the jokes. Don't repeat what the cards print: the poster
-   shows the resource name, epithet and yearly reward, the plaque shows the owner, month, monthly cost and offence
-   count under "for outstanding achievement in", and the stone says "Here lies $X of annual budget, killed by <top
-   owner>".{guard_note}
+   Include every finding id, dismissed or not. The report draws a WANTED poster of the most expensive finding you kept, a
+   two-panel "what they said / what they did" card for the finding you pick, an Employee of the Month plaque for the
+   Wall of Shame leader and a tombstone for the budget, and fills in their names, costs and owners itself: the
+   captions supply only the jokes. Don't repeat what the cards print: the poster shows the resource name, epithet and
+   yearly reward, the two-panel card puts your excuse in quotes, signed "<owner>, probably", above the finding's name
+   and yearly cost, the plaque shows the owner, month, monthly cost and offence count under "for outstanding
+   achievement in", and the stone says "Here lies $X of annual budget, killed by <top owner>". The excuse is the only
+   made-up line, and the card labels it a guess; the rest stays factual.{guard_note}
 4. Call mcp__roastbot__render_report.
 5. End with a terminal roast (max 10 lines, fully in character): total monthly and yearly waste, the worst three
    offenders with ids and $/mo, and the public humiliation of the Wall of Shame leader.

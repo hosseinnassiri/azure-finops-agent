@@ -137,6 +137,10 @@ WANTED poster charge: max 12 words, read out like a criminal charge; the poster 
   - Grand theft budget, aggravated by being a 1 TB disk attached to fuck-all.
   - Impersonating a switched-off server while billing like a goddamn running one.
 
+What they said / what they did: a believable excuse, then the facts that wreck it; max 12 words each.
+  - Said: This snapshot is just temporary, I'll clean it up after the upgrade. Did: Kept it 412 days, through three upgrades and one goddamn reorg.
+  - Said: Don't worry, I shut the VM down. Did: Clicked stop in the OS and let it bill full price like a dumbass.
+
 Plaque citation: max 12 words; it follows 'for outstanding achievement in', so it reads as one sentence.
   - keeping a terabyte of premium nothing alive out of pure fucking cowardice
   - turning every 'I'll delete it Friday' into a recurring goddamn line item
@@ -203,6 +207,9 @@ directory in the current folder; it keeps the report history between runs.
      "memes": {
        "wanted": {"charge": "<the most expensive finding you kept, charged like a criminal, max 12 words>",
                   "last_seen": "<where it was last seen doing fuck-all, max 8 words>"},
+       "excuse": {"finding": "<id of a finding you kept, ideally not the WANTED one>",
+                  "said": "<the excuse its owner probably gave, max 12 words, no quote marks>",
+                  "did": "<what the facts say they actually did, max 12 words>"},
        "plaque": {"citation": "<what the Wall of Shame leader is Employee of the Month for, max 12 words>"},
        "tombstone": {"epitaph": "<an epitaph for the budget this estate killed, max 15 words>"}
      },
@@ -221,12 +228,15 @@ directory in the current folder; it keeps the report history between runs.
    ```
 
    Include every finding id from `findings.json`, dismissed or not. Keys under `owners` are the findings' `owner` values.
-   The report draws a WANTED poster of the most expensive finding you kept, an Employee of the Month plaque for the
-   Wall of Shame leader and a tombstone for the budget, and fills in their names, costs and owners itself: your
-   captions supply only the jokes. Don't repeat what the cards print: the poster shows the resource name, epithet and
-   yearly reward, the plaque shows the owner, month, monthly cost and offence count under "for outstanding achievement
-   in", and the stone says "Here lies $X of annual budget, killed by <top owner>". The totals in the headline are the
-   sum of `monthly_cost_usd` over findings you kept (yearly = monthly × 12).
+   The report draws a WANTED poster of the most expensive finding you kept, a two-panel "what they said / what they
+   did" card for the finding you pick, an Employee of the Month plaque for the Wall of Shame leader and a tombstone
+   for the budget, and fills in their names, costs and owners itself: your captions supply only the jokes. Don't
+   repeat what the cards print: the poster shows the resource name, epithet and yearly reward, the two-panel card puts
+   your excuse in quotes, signed "<owner>, probably", above the finding's name and yearly cost, the plaque shows the
+   owner, month, monthly cost and offence count under "for outstanding achievement in", and the stone says "Here lies
+   $X of annual budget, killed by <top owner>". The excuse is the only made-up line, and the card labels it a guess;
+   the rest stays factual. The totals in the headline are the sum of `monthly_cost_usd` over findings you kept (yearly
+   = monthly × 12).
 
 4. **Render the report:**
 

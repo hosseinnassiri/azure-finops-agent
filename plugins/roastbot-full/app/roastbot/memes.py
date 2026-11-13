@@ -1,5 +1,5 @@
-"""Meme cards for the report: a WANTED poster for the worst offender, an Employee of the Month plaque for the Wall of
-Shame leader and a tombstone for the budget.
+"""Meme cards for the report: a WANTED poster for the worst offender, a two-panel "what they said / what they did",
+an Employee of the Month plaque for the Wall of Shame leader and a tombstone for the budget.
 
 Drawn here as inline SVG, so they need no image service and nothing leaves the machine. The facts on them (names,
 dollar figures, owners) come from the findings; only the captions come from the agent (roasts.json "memes"), with
@@ -230,6 +230,102 @@ def plaque(owner: str, cost: float, offences: int, date: str, caption: dict) -> 
 	return svg(body, f"Employee of the Month: {owner}")
 
 
+FALLBACK_SAID = {
+	"unattached_disk": "I'll delete it right after the migration.",
+	"orphaned_public_ip": "We might need that IP later.",
+	"stopped_not_deallocated_vm": "Relax, I turned it off.",
+	"idle_vm": "That box is doing important work.",
+	"running_vm_unverified": "That box is doing important work.",
+	"empty_app_service_plan": "The new app launches next sprint.",
+	"orphaned_nic": "I cleaned everything up when the VM went.",
+	"old_snapshot": "Just a quick snapshot, in case.",
+}
+FALLBACK_DID = "Walked away and left the meter running, for fuck's sake."
+
+
+def server(x: int, y: int, on_fire: bool) -> str:
+	"""A small server with a face: smug in panel one, burning in panel two."""
+	face = (
+		f'<path d="M{x + 10} {y + 26} q10 8 20 0" stroke="#f1e3c2" stroke-width="2.5" fill="none" '
+		'stroke-linecap="round"/>'
+		if not on_fire
+		else f'<ellipse cx="{x + 20}" cy="{y + 28}" rx="5" ry="6" fill="#f1e3c2"/>'
+	)
+	flames = (
+		f'<path d="M{x + 2} {y + 2} C{x - 2} {y - 14} {x + 10} {y - 16} {x + 8} {y - 30} C{x + 18} {y - 20} '
+		f'{x + 24} {y - 34} {x + 22} {y - 44} C{x + 36} {y - 30} {x + 42} {y - 16} {x + 38} {y + 2} Z" fill="#e8590c"/>'
+		f'<path d="M{x + 10} {y + 2} C{x + 8} {y - 8} {x + 16} {y - 10} {x + 16} {y - 20} C{x + 24} {y - 12} '
+		f'{x + 30} {y - 8} {x + 30} {y + 2} Z" fill="#ffc53d"/>'
+		if on_fire
+		else ""
+	)
+	return (
+		flames + f'<rect x="{x}" y="{y}" width="40" height="52" rx="5" fill="#3b342c"/>'
+		f'<circle cx="{x + 13}" cy="{y + 15}" r="3" fill="#f1e3c2"/><circle cx="{x + 27}" cy="{y + 15}" r="3" '
+		f'fill="#f1e3c2"/>{face}<circle cx="{x + 32}" cy="{y + 45}" r="2" fill="#e8590c"/>'
+	)
+
+
+def excuse(finding: dict, caption: dict) -> str:
+	"""Two panels: the excuse the owner probably gave, then what the scan actually found."""
+	said = caption.get("said") or FALLBACK_SAID.get(finding["detector"], "I'll clean it up on Friday.")
+	did = caption.get("did") or FALLBACK_DID
+	cost = finding["monthly_cost_usd"] or 0
+	ink = "#17130f"
+	quote_rows = lines(f"“{said}”", 32, 4)
+	quote_top = 95 - (len(quote_rows) - 1) * 17 // 2  # centred in the bubble, which spans y 46-134
+
+	def label(y: int, text: str, fill: str) -> str:
+		return (
+			f'<rect x="12" y="{y}" width="276" height="24" fill="{ink}"/>'
+			f'<text x="24" y="{y + 17}" font-family="{DISPLAY}" font-size="15" fill="{fill}" letter-spacing="2">'
+			f"{text}</text>"
+		)
+
+	body = (
+		f'<rect width="300" height="420" fill="#fffdf8"/><rect x="6" y="6" width="288" height="408" fill="none" '
+		f'stroke="{ink}" stroke-width="4"/>'
+		f'<rect x="12" y="12" width="276" height="190" fill="#dfeaf2" stroke="{ink}" stroke-width="2.5"/>'
+		+ label(12, "WHAT THEY PROBABLY SAID", "#dfeaf2")
+		+ f'<path d="M58 132 L48 160 L84 132 Z" fill="#fff" stroke="{ink}" stroke-width="2" stroke-linejoin="round"/>'
+		f'<rect x="24" y="46" width="252" height="88" rx="16" fill="#fff" stroke="{ink}" stroke-width="2"/>'
+		'<rect x="57" y="129" width="26" height="6" fill="#fff"/>'
+		+ text_block(
+			quote_rows,
+			150,
+			quote_top,
+			17,
+			text_anchor="middle",
+			font_family=BODY,
+			font_size="13",
+			font_weight="600",
+			fill=ink,
+		)
+		+ server(30, 142, on_fire=False)
+		+ f'<text x="82" y="176" font-family="{MONO}" font-size="10" fill="#4a4a4a">'
+		f"- {escape(clip(finding['owner'], 24))}, probably</text>"
+		f'<rect x="12" y="212" width="276" height="196" fill="#fde4d3" stroke="{ink}" stroke-width="2.5"/>'
+		+ label(212, "WHAT THEY DID", "#fde4d3")
+		+ text_block(lines(did, 36, 3), 24, 260, 16, font_family=BODY, font_size="12.5", fill=ink)
+		+ f'<text x="24" y="326" font-family="{MONO}" font-size="11" font-weight="600" fill="{ink}">'
+		f"{escape(clip(finding['resource_name'], 26))}</text>"
+		+ f'<text x="24" y="366" font-family="{DISPLAY}" font-size="30" fill="#c92a2a">${cost * 12:,.0f}/YR</text>'
+		+ f'<text x="24" y="386" font-family="{MONO}" font-size="9" fill="#6d665c">and still fucking billing</text>'
+		+ server(224, 338, on_fire=True)
+	)
+	return svg(body, f"What they said, what they did: {finding['resource_name']}")
+
+
+def excuse_subject(findings: list[dict], caption: dict) -> tuple[dict, dict]:
+	"""The finding the agent picked, with its captions; else the runner-up by cost, with canned ones (the agent's
+	captions are about a finding we can't show)."""
+	by_id = {f["id"]: f for f in findings}
+	if caption.get("finding") in by_id:
+		return by_id[caption["finding"]], caption
+	ranked = sorted(findings, key=lambda f: f["monthly_cost_usd"] or 0, reverse=True)
+	return ranked[min(1, len(ranked) - 1)], {}
+
+
 def download(svg_text: str, name: str) -> str:
 	return f'<a download="{name}" href="data:image/svg+xml;charset=utf-8,{quote(svg_text)}">Download SVG</a>'
 
@@ -246,10 +342,12 @@ def section(
 	poster = wanted(worst, epithets[worst["id"]], captions.get("wanted") or {})
 	award = plaque(leader, leader_cost, offences, date, captions.get("plaque") or {})
 	grave = tombstone(total, leader, len(shame) - 1, date, captions.get("tombstone") or {})
+	panels = excuse(*excuse_subject(findings, captions.get("excuse") or {}))
 	cards = "".join(
 		f"<figure>{art}<figcaption>{download(art, name)}</figcaption></figure>"
 		for art, name in (
 			(poster, "roastbot-wanted.svg"),
+			(panels, "roastbot-said-vs-did.svg"),
 			(award, "roastbot-employee-of-the-month.svg"),
 			(grave, "roastbot-tombstone.svg"),
 		)
@@ -262,11 +360,12 @@ def section(
 
 CSS = """
 .memes { margin-bottom:32px; }
-.meme-row { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,240px),330px)); gap:24px; justify-content:center; }
-.memes figure { margin:0; text-align:center; }
+.meme-row { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,230px),1fr)); gap:24px; }
+.memes figure { margin:0 auto; width:100%; max-width:330px; text-align:center; }
 .memes svg { display:block; width:100%; height:auto; border-radius:4px; box-shadow:0 14px 30px -16px rgba(0,0,0,.5); }
 .memes figure:first-child svg { transform:rotate(-1.5deg); }
 .memes figure:nth-child(2) svg { transform:rotate(.5deg); }
+.memes figure:nth-child(3) svg { transform:rotate(-.8deg); }
 .memes figure:last-child svg { transform:rotate(1deg); }
 .memes figcaption { margin-top:12px; font:500 12px var(--mono); }
 .memes figcaption a { color:var(--fire); }
