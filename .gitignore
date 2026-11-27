@@ -7,6 +7,7 @@ __pycache__/
 
 # RoastBot output: scans, roasts, reports, leaderboard history (contains resource IDs)
 out/
+roastbot-out/
 
 # Secrets
 .env
