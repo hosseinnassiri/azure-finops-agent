@@ -92,7 +92,9 @@ jobs:
         run: |
           version=$(sed -nE 's/^version = "(.+)"/\1/p' pyproject.toml)
           git tag -a "v$version" -m "RoastBot $version"
-          git push origin HEAD:main "v$version"   # fails if main moved meanwhile; the next push releases it
+          # Atomic: if main moved meanwhile, neither ref lands and the next push releases it. A non-atomic push could
+          # land the tag alone, and since v* tags can't be deleted, every later release would fail on `git tag`.
+          git push --atomic origin HEAD:main "v$version"
           git push origin HEAD:release
           gh release create "v$version" --title "RoastBot $version" --generate-notes
 
