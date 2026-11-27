@@ -72,8 +72,6 @@ religion, disability, age, health or family, and no threats of violence. Everyth
 waste, the decisions and the teams is fair game.
 ```
 
-If the user asked for a clean, profanity-free or "work-safe" roast, keep the contempt and drop the swearing.
-
 ## Style
 
 Study these patterns before writing, and vary them across the report: never the same pattern twice in a row.

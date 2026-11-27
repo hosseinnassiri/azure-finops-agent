@@ -29,13 +29,10 @@ pre-approved is in RoastBot's own marketplace: `/plugin marketplace add hosseinn
    short thresholds that count freshly created waste.
 3. Open `roastbot-out/report.html` in the folder you ran it from.
 
-Ask for a "work-safe" roast if you want the contempt without the swearing.
-
 ## Examples
 
 - `/roastbot:roast`: roast every subscription you can read.
 - `/roastbot:roast --subscription "Production"`: roast one subscription, by name or ID. Repeat the flag for more.
-- `Roast our Azure dev subscription, but keep it work-safe`: the same audit and report, without the swearing.
 - `Which of my Azure VMs are idle, and what are they costing me?`: Claude picks the skill up from the question.
 - `/roastbot:roast --demo`: short thresholds, so resources created in the last few minutes already count as waste.
 
